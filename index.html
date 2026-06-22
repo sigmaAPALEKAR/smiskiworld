@@ -97,9 +97,45 @@
             opacity: 0.9;
             text-transform: capitalize;
         }
+
+        #loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: #1a1a2e;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            color: white;
+            font-family: 'Segoe UI', sans-serif;
+        }
+
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-top: 3px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body>
+    <div id="loading-screen">
+        <div class="loading-spinner"></div>
+        <div>Loading Smiski World...</div>
+    </div>
+
     <div id="canvas-container"></div>
     
     <div id="ui-overlay">
@@ -109,7 +145,7 @@
     </div>
 
     <div id="controls-info">
-        🖱️ Left Click + Drag: Rotate | Scroll: Zoom | Right Click: Drag: Pan | Click Smiski: View Info
+        🖱️ Left Click + Drag: Rotate | Scroll: Zoom | Right Click + Drag: Pan | Click Smiski: View Info
     </div>
 
     <div id="smiski-info">
@@ -130,13 +166,14 @@
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
         import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
         // Scene setup
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x87CEEB);
-        scene.fog = new THREE.FogExp2(0x87CEEB, 0.0008);
+        scene.fog = new THREE.FogExp2(0x87CEEB, 0.0003);
 
-        // Renderer with better settings
+        // Renderer
         const renderer = new THREE.WebGLRenderer({ 
             antialias: true,
             alpha: false
@@ -159,44 +196,42 @@
 
         // Camera
         const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.5, 300);
-        camera.position.set(25, 20, 30);
-        camera.lookAt(-8, 0, -5);
+        camera.position.set(30, 25, 35);
+        camera.lookAt(0, 0, 0);
 
-        // Better orbit controls
+        // Orbit controls
         const controls = new OrbitControls(camera, renderer.domElement);
         controls.enableDamping = true;
         controls.dampingFactor = 0.08;
-        controls.minDistance = 3;
-        controls.maxDistance = 80;
+        controls.minDistance = 5;
+        controls.maxDistance = 100;
         controls.maxPolarAngle = Math.PI / 2.1;
-        controls.target.set(-8, 0.5, -5);
+        controls.target.set(0, 1, 0);
         controls.update();
 
-        // Enhanced lighting system
+        // Lighting
         const ambientLight = new THREE.AmbientLight(0x404066, 0.6);
         scene.add(ambientLight);
 
-        // Hemisphere light for more natural ambient
-        const hemiLight = new THREE.HemisphereLight(0xddeeff, 0x889966, 0.5);
+        const hemiLight = new THREE.HemisphereLight(0xddeeff, 0x889966, 0.6);
         scene.add(hemiLight);
 
-        // Main sun light
         const sunLight = new THREE.DirectionalLight(0xfff8e7, 3.0);
-        sunLight.position.set(30, 40, 20);
+        sunLight.position.set(50, 60, 30);
         sunLight.castShadow = true;
         sunLight.shadow.mapSize.width = 4096;
         sunLight.shadow.mapSize.height = 4096;
         sunLight.shadow.camera.near = 0.5;
         sunLight.shadow.camera.far = 200;
-        sunLight.shadow.camera.left = -60;
-        sunLight.shadow.camera.right = 60;
-        sunLight.shadow.camera.top = 60;
-        sunLight.shadow.camera.bottom = -60;
+        sunLight.shadow.camera.left = -70;
+        sunLight.shadow.camera.right = 70;
+        sunLight.shadow.camera.top = 70;
+        sunLight.shadow.camera.bottom = -70;
         sunLight.shadow.bias = -0.00005;
         sunLight.shadow.normalBias = 0.02;
         scene.add(sunLight);
 
-        // Dynamic sky
+        // Sky
         const skyGeometry = new THREE.SphereGeometry(120, 32, 32);
         const skyMaterial = new THREE.ShaderMaterial({
             uniforms: {
@@ -229,265 +264,168 @@
         const sky = new THREE.Mesh(skyGeometry, skyMaterial);
         scene.add(sky);
 
-        // Textured ground with grass-like variation
-        const groundGeometry = new THREE.PlaneGeometry(200, 200, 50, 50);
-        const positions = groundGeometry.attributes.position;
-        
-        // Add subtle terrain variation
-        for (let i = 0; i < positions.count; i++) {
-            const x = positions.getX(i);
-            const y = positions.getY(i);
-            positions.setZ(i, (Math.sin(x * 0.1) * Math.cos(y * 0.1) * 0.5) + 
-                               (Math.sin(x * 0.3) * Math.cos(y * 0.2) * 0.2));
+        // Ground with realistic grass texture
+        function createGround() {
+            const groundGroup = new THREE.Group();
+            
+            // Main ground plane with subtle terrain
+            const groundGeometry = new THREE.PlaneGeometry(200, 200, 100, 100);
+            const positions = groundGeometry.attributes.position;
+            
+            // Add terrain variation
+            for (let i = 0; i < positions.count; i++) {
+                const x = positions.getX(i);
+                const y = positions.getY(i);
+                const z = (Math.sin(x * 0.05) * Math.cos(y * 0.05) * 1.5) + 
+                         (Math.sin(x * 0.15) * Math.cos(y * 0.15) * 0.5) +
+                         (Math.random() * 0.1);
+                positions.setZ(i, z);
+            }
+            groundGeometry.computeVertexNormals();
+            
+            // Create canvas texture for grass
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 512;
+            const ctx = canvas.getContext('2d');
+            
+            // Base grass color
+            ctx.fillStyle = '#4a7c3f';
+            ctx.fillRect(0, 0, 512, 512);
+            
+            // Add variation
+            for (let i = 0; i < 5000; i++) {
+                const x = Math.random() * 512;
+                const y = Math.random() * 512;
+                const shade = 60 + Math.random() * 40;
+                ctx.fillStyle = `rgb(${shade - 10}, ${shade + 20}, ${shade - 15})`;
+                ctx.fillRect(x, y, 3, 3);
+            }
+            
+            const grassTexture = new THREE.CanvasTexture(canvas);
+            grassTexture.wrapS = THREE.RepeatWrapping;
+            grassTexture.wrapT = THREE.RepeatWrapping;
+            grassTexture.repeat.set(40, 40);
+            
+            const groundMaterial = new THREE.MeshStandardMaterial({ 
+                map: grassTexture,
+                color: 0x5a8f3c,
+                roughness: 0.9,
+                metalness: 0.0,
+                flatShading: false
+            });
+            
+            const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+            ground.rotation.x = -Math.PI / 2;
+            ground.receiveShadow = true;
+            groundGroup.add(ground);
+            
+            return groundGroup;
         }
-        groundGeometry.computeVertexNormals();
-        
-        const groundMaterial = new THREE.MeshStandardMaterial({ 
-            color: 0x5a8f3c,
-            roughness: 0.9,
-            metalness: 0.0,
-            flatShading: false
-        });
-        const ground = new THREE.Mesh(groundGeometry, groundMaterial);
-        ground.rotation.x = -Math.PI / 2;
-        ground.receiveShadow = true;
-        scene.add(ground);
 
-        // Create realistic house
-        function createDetailedHouse() {
-            const house = new THREE.Group();
+        // Create realistic grass patches
+        function createGrassPatches() {
+            const grassGroup = new THREE.Group();
             
-            // Foundation
-            const foundationGeometry = new THREE.BoxGeometry(14, 0.5, 12);
-            const foundationMaterial = new THREE.MeshStandardMaterial({ 
-                color: 0x808080,
-                roughness: 0.7,
-                metalness: 0.2
-            });
-            const foundation = new THREE.Mesh(foundationGeometry, foundationMaterial);
-            foundation.position.y = 0.25;
-            foundation.castShadow = true;
-            foundation.receiveShadow = true;
-            house.add(foundation);
-            
-            // Main walls
-            const wallGeometry = new THREE.BoxGeometry(12, 8, 10);
-            const wallMaterial = new THREE.MeshStandardMaterial({ 
-                color: 0xf5e6d3,
-                roughness: 0.5,
-                metalness: 0.05
-            });
-            const walls = new THREE.Mesh(wallGeometry, wallMaterial);
-            walls.position.y = 4.5;
-            walls.castShadow = true;
-            walls.receiveShadow = true;
-            house.add(walls);
-            
-            // Wall details - horizontal siding lines
-            for (let i = 1; i < 8; i++) {
-                const sidingLine = new THREE.Mesh(
-                    new THREE.BoxGeometry(12.02, 0.05, 10.02),
-                    new THREE.MeshStandardMaterial({ color: 0xe8d5c0, roughness: 0.6 })
-                );
-                sidingLine.position.y = i;
-                house.add(sidingLine);
+            // Create grass blade geometry
+            function createGrassBlade(height, width) {
+                const shape = new THREE.Shape();
+                shape.moveTo(0, 0);
+                shape.lineTo(-width/2, height);
+                shape.lineTo(0, height * 1.1);
+                shape.lineTo(width/2, height);
+                shape.closePath();
+                
+                const geometry = new THREE.ShapeGeometry(shape);
+                return geometry;
             }
             
-            // Roof with overhang
-            const roofGroup = new THREE.Group();
-            
-            // Main roof
-            const roofGeometry = new THREE.ConeGeometry(9, 5, 4);
-            const roofMaterial = new THREE.MeshStandardMaterial({ 
-                color: 0x8B4513,
-                roughness: 0.6,
-                metalness: 0.1
-            });
-            const roof = new THREE.Mesh(roofGeometry, roofMaterial);
-            roof.position.y = 10.5;
-            roof.rotation.y = Math.PI / 4;
-            roof.castShadow = true;
-            roof.receiveShadow = true;
-            roofGroup.add(roof);
-            
-            // Roof trim
-            const trimGeometry = new THREE.TorusGeometry(7.5, 0.2, 8, 4);
-            const trimMaterial = new THREE.MeshStandardMaterial({ color: 0x654321, roughness: 0.5 });
-            const trim = new THREE.Mesh(trimGeometry, trimMaterial);
-            trim.position.y = 8.5;
-            trim.rotation.x = Math.PI / 2;
-            roofGroup.add(trim);
-            
-            house.add(roofGroup);
-            
-            // Front door with frame
-            const doorFrame = new THREE.Mesh(
-                new THREE.BoxGeometry(2.2, 4.4, 0.2),
-                new THREE.MeshStandardMaterial({ color: 0x4a3728, roughness: 0.5 })
-            );
-            doorFrame.position.set(0, 2.2, 5.05);
-            house.add(doorFrame);
-            
-            const doorGeometry = new THREE.PlaneGeometry(1.8, 4);
-            const doorMaterial = new THREE.MeshStandardMaterial({ 
-                color: 0x8B6914,
-                roughness: 0.4,
-                metalness: 0.3
-            });
-            const door = new THREE.Mesh(doorGeometry, doorMaterial);
-            door.position.set(0, 2.2, 5.1);
-            door.castShadow = true;
-            house.add(door);
-            
-            // Door knob
-            const knobGeometry = new THREE.SphereGeometry(0.1, 8, 8);
-            const knobMaterial = new THREE.MeshStandardMaterial({ 
-                color: 0xFFD700,
-                roughness: 0.3,
-                metalness: 0.8
-            });
-            const knob = new THREE.Mesh(knobGeometry, knobMaterial);
-            knob.position.set(0.6, 2.2, 5.2);
-            house.add(knob);
-            
-            // Windows with frames and glass
-            function createWindow(x, y, z, rotationY) {
-                const windowGroup = new THREE.Group();
+            // Create patches of grass
+            for (let patch = 0; patch < 50; patch++) {
+                const patchGroup = new THREE.Group();
+                const patchX = (Math.random() - 0.5) * 80;
+                const patchZ = (Math.random() - 0.5) * 80;
+                const bladeCount = 20 + Math.floor(Math.random() * 30);
                 
-                // Frame
-                const frameGeometry = new THREE.BoxGeometry(2, 2.5, 0.1);
-                const frameMaterial = new THREE.MeshStandardMaterial({ color: 0x4a3728, roughness: 0.5 });
-                const frame = new THREE.Mesh(frameGeometry, frameMaterial);
-                windowGroup.add(frame);
+                for (let i = 0; i < bladeCount; i++) {
+                    const height = 0.3 + Math.random() * 0.8;
+                    const width = 0.05 + Math.random() * 0.1;
+                    const bladeGeometry = createGrassBlade(height, width);
+                    
+                    const greenHue = 0.2 + Math.random() * 0.2;
+                    const bladeMaterial = new THREE.MeshStandardMaterial({
+                        color: new THREE.Color().setHSL(greenHue, 0.7, 0.2 + Math.random() * 0.3),
+                        side: THREE.DoubleSide,
+                        roughness: 0.8
+                    });
+                    
+                    const blade = new THREE.Mesh(bladeGeometry, bladeMaterial);
+                    blade.position.set(
+                        (Math.random() - 0.5) * 2,
+                        0,
+                        (Math.random() - 0.5) * 2
+                    );
+                    blade.rotation.y = Math.random() * Math.PI;
+                    blade.rotation.x = (Math.random() - 0.5) * 0.3;
+                    blade.rotation.z = (Math.random() - 0.5) * 0.3;
+                    blade.castShadow = true;
+                    blade.receiveShadow = true;
+                    
+                    patchGroup.add(blade);
+                }
                 
-                // Glass
-                const glassGeometry = new THREE.PlaneGeometry(1.6, 2.1);
-                const glassMaterial = new THREE.MeshPhysicalMaterial({ 
-                    color: 0x87CEEB,
-                    roughness: 0.1,
-                    metalness: 0.1,
-                    opacity: 0.7,
-                    transparent: true
-                });
-                const glass = new THREE.Mesh(glassGeometry, glassMaterial);
-                glass.position.z = 0.06;
-                windowGroup.add(glass);
-                
-                // Window cross
-                const crossH = new THREE.Mesh(
-                    new THREE.BoxGeometry(1.6, 0.08, 0.08),
-                    new THREE.MeshStandardMaterial({ color: 0x4a3728 })
-                );
-                crossH.position.z = 0.07;
-                windowGroup.add(crossH);
-                
-                const crossV = new THREE.Mesh(
-                    new THREE.BoxGeometry(0.08, 2.1, 0.08),
-                    new THREE.MeshStandardMaterial({ color: 0x4a3728 })
-                );
-                crossV.position.z = 0.07;
-                windowGroup.add(crossV);
-                
-                windowGroup.position.set(x, y, z);
-                windowGroup.rotation.y = rotationY;
-                windowGroup.castShadow = true;
-                
-                return windowGroup;
+                patchGroup.position.set(patchX, 0, patchZ);
+                grassGroup.add(patchGroup);
             }
             
-            // Front windows
-            house.add(createWindow(2.5, 5.5, 5.05, 0));
-            house.add(createWindow(-2.5, 5.5, 5.05, 0));
-            
-            // Side windows
-            house.add(createWindow(6.05, 5.5, 1.5, Math.PI / 2));
-            house.add(createWindow(-6.05, 5.5, -1.5, -Math.PI / 2));
-            
-            // Chimney
-            const chimneyGroup = new THREE.Group();
-            
-            const chimneyBase = new THREE.Mesh(
-                new THREE.BoxGeometry(1.8, 4, 1.8),
-                new THREE.MeshStandardMaterial({ color: 0x8B4513, roughness: 0.6 })
-            );
-            chimneyBase.position.set(3.5, 10, -2);
-            chimneyBase.castShadow = true;
-            chimneyBase.receiveShadow = true;
-            chimneyGroup.add(chimneyBase);
-            
-            const chimneyTop = new THREE.Mesh(
-                new THREE.BoxGeometry(2.2, 0.4, 2.2),
-                new THREE.MeshStandardMaterial({ color: 0x654321, roughness: 0.5 })
-            );
-            chimneyTop.position.set(3.5, 12.2, -2);
-            chimneyTop.castShadow = true;
-            chimneyGroup.add(chimneyTop);
-            
-            house.add(chimneyGroup);
-            
-            // Porch
-            const porchFloor = new THREE.Mesh(
-                new THREE.BoxGeometry(4, 0.2, 2),
-                new THREE.MeshStandardMaterial({ color: 0x8B7355, roughness: 0.7 })
-            );
-            porchFloor.position.set(0, 0.6, 6);
-            porchFloor.receiveShadow = true;
-            porchFloor.castShadow = true;
-            house.add(porchFloor);
-            
-            // Porch steps
-            for (let i = 0; i < 3; i++) {
-                const step = new THREE.Mesh(
-                    new THREE.BoxGeometry(2 - i * 0.2, 0.2, 0.5),
-                    new THREE.MeshStandardMaterial({ color: 0x808080, roughness: 0.7 })
-                );
-                step.position.set(0, 0.7 - i * 0.2, 7 - i * 0.5);
-                step.receiveShadow = true;
-                step.castShadow = true;
-                house.add(step);
-            }
-            
-            house.position.set(-18, 0, -10);
-            return house;
+            return grassGroup;
         }
 
         // Create realistic trees
-        function createDetailedTree(x, z, scale = 1) {
+        function createTree(x, z, scale = 1) {
             const tree = new THREE.Group();
             
-            // Trunk with texture-like roughness
-            const trunkGeometry = new THREE.CylinderGeometry(0.3 * scale, 0.5 * scale, 5 * scale, 12);
+            // Trunk with varied brown
+            const trunkHeight = 4 + Math.random() * 3;
+            const trunkGeometry = new THREE.CylinderGeometry(0.2 * scale, 0.4 * scale, trunkHeight * scale, 12);
             const trunkMaterial = new THREE.MeshStandardMaterial({ 
-                color: 0x6B4226,
+                color: new THREE.Color().setHSL(0.08, 0.6, 0.2 + Math.random() * 0.2),
                 roughness: 0.9,
                 metalness: 0.0
             });
             const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
-            trunk.position.y = 2.5 * scale;
+            trunk.position.y = trunkHeight * scale / 2;
             trunk.castShadow = true;
             trunk.receiveShadow = true;
             tree.add(trunk);
             
-            // Leaf clusters (multiple for realism)
+            // Multiple leaf clusters for realistic look
+            const leafCount = 8 + Math.floor(Math.random() * 8);
             const leafColors = [
-                0x2d5a27, 0x3a7a32, 0x4a8c3f, 0x2d6a2d
+                new THREE.Color().setHSL(0.25, 0.8, 0.2),
+                new THREE.Color().setHSL(0.28, 0.7, 0.25),
+                new THREE.Color().setHSL(0.22, 0.75, 0.3),
+                new THREE.Color().setHSL(0.3, 0.8, 0.22)
             ];
             
-            for (let i = 0; i < 6; i++) {
-                const leafGeometry = new THREE.SphereGeometry(1.5 * scale, 12, 10);
+            for (let i = 0; i < leafCount; i++) {
+                const leafSize = (0.8 + Math.random() * 1.5) * scale;
+                const leafGeometry = new THREE.SphereGeometry(leafSize, 10, 8);
                 const leafMaterial = new THREE.MeshStandardMaterial({ 
-                    color: leafColors[i % leafColors.length],
+                    color: leafColors[Math.floor(Math.random() * leafColors.length)],
                     roughness: 0.7,
                     metalness: 0.0
                 });
                 const leaves = new THREE.Mesh(leafGeometry, leafMaterial);
                 
-                const angle = (i / 6) * Math.PI * 2;
-                const heightVariation = 4 + i * 0.8 * scale;
-                leaves.position.y = heightVariation;
-                leaves.position.x = Math.cos(angle) * (1 + i * 0.2) * scale;
-                leaves.position.z = Math.sin(angle) * (1 + i * 0.2) * scale;
-                leaves.scale.setScalar(1 - i * 0.05);
+                const angle = (i / leafCount) * Math.PI * 2 + Math.random() * 0.5;
+                const radius = (1 + Math.random() * 2) * scale;
+                const heightVar = trunkHeight * scale * 0.6 + Math.random() * trunkHeight * scale * 0.5;
+                
+                leaves.position.y = heightVar;
+                leaves.position.x = Math.cos(angle) * radius;
+                leaves.position.z = Math.sin(angle) * radius;
+                leaves.scale.setScalar(0.8 + Math.random() * 0.4);
                 leaves.castShadow = true;
                 leaves.receiveShadow = true;
                 tree.add(leaves);
@@ -497,92 +435,107 @@
             return tree;
         }
 
-        // Garden with varied plants
-        function createGarden() {
-            const garden = new THREE.Group();
+        // Create flowers and bushes
+        function createFlowers(x, z, count) {
+            const flowerGroup = new THREE.Group();
             
-            // Garden bed
-            const bedGeometry = new THREE.BoxGeometry(16, 0.3, 16);
-            const bedMaterial = new THREE.MeshStandardMaterial({ 
-                color: 0x4a3728,
-                roughness: 0.8
-            });
-            const bed = new THREE.Mesh(bedGeometry, bedMaterial);
-            bed.position.set(-18, 0.15, 2);
-            bed.receiveShadow = true;
-            garden.add(bed);
-            
-            // Various plants
-            for (let i = 0; i < 20; i++) {
-                const plant = new THREE.Group();
-                
-                const x = -18 + (Math.random() - 0.5) * 14;
-                const z = 2 + (Math.random() - 0.5) * 14;
+            for (let i = 0; i < count; i++) {
+                const flower = new THREE.Group();
                 
                 // Stem
-                const stemHeight = 0.5 + Math.random() * 1.5;
-                const stemGeometry = new THREE.CylinderGeometry(0.05, 0.08, stemHeight, 8);
+                const stemHeight = 0.3 + Math.random() * 1;
+                const stemGeometry = new THREE.CylinderGeometry(0.02, 0.03, stemHeight, 8);
                 const stemMaterial = new THREE.MeshStandardMaterial({ 
-                    color: new THREE.Color().setHSL(0.25 + Math.random() * 0.1, 0.8, 0.3)
+                    color: new THREE.Color().setHSL(0.25, 0.8, 0.3)
                 });
                 const stem = new THREE.Mesh(stemGeometry, stemMaterial);
                 stem.position.y = stemHeight / 2;
                 stem.castShadow = true;
-                plant.add(stem);
+                flower.add(stem);
                 
-                // Flower/leaf
-                const flowerType = Math.random();
-                let flower;
+                // Flower head
+                const petalColor = new THREE.Color().setHSL(Math.random(), 0.9, 0.5 + Math.random() * 0.3);
+                const petalGeometry = new THREE.SphereGeometry(0.1 + Math.random() * 0.2, 8, 6);
+                const petalMaterial = new THREE.MeshStandardMaterial({ 
+                    color: petalColor,
+                    roughness: 0.4
+                });
+                const petals = new THREE.Mesh(petalGeometry, petalMaterial);
+                petals.position.y = stemHeight;
+                petals.castShadow = true;
+                flower.add(petals);
                 
-                if (flowerType < 0.6) {
-                    // Round flower
-                    const flowerGeometry = new THREE.SphereGeometry(0.2 + Math.random() * 0.3, 8, 6);
-                    const flowerMaterial = new THREE.MeshStandardMaterial({ 
-                        color: new THREE.Color().setHSL(Math.random(), 0.8, 0.6)
-                    });
-                    flower = new THREE.Mesh(flowerGeometry, flowerMaterial);
-                } else {
-                    // Tall plant
-                    const flowerGeometry = new THREE.ConeGeometry(0.15, 0.5, 8);
-                    const flowerMaterial = new THREE.MeshStandardMaterial({ 
-                        color: new THREE.Color().setHSL(Math.random(), 0.7, 0.5)
-                    });
-                    flower = new THREE.Mesh(flowerGeometry, flowerMaterial);
-                }
-                
-                flower.position.y = stemHeight;
-                flower.castShadow = true;
-                plant.add(flower);
-                
-                plant.position.set(x, 0.3, z);
-                garden.add(plant);
+                flower.position.set(
+                    (Math.random() - 0.5) * 4,
+                    0,
+                    (Math.random() - 0.5) * 4
+                );
+                flowerGroup.add(flower);
             }
             
-            return garden;
+            flowerGroup.position.set(x, 0, z);
+            return flowerGroup;
         }
 
-        // Stone pathway
-        function createStonePath() {
-            const path = new THREE.Group();
+        // Create rocks
+        function createRocks(count, spread) {
+            const rockGroup = new THREE.Group();
             
-            for (let i = 0; i < 20; i++) {
+            for (let i = 0; i < count; i++) {
+                const size = 0.2 + Math.random() * 0.8;
+                const rockGeometry = new THREE.IcosahedronGeometry(size, 1);
+                // Deform vertices slightly
+                const positions = rockGeometry.attributes.position;
+                for (let j = 0; j < positions.count; j++) {
+                    positions.setX(j, positions.getX(j) * (0.8 + Math.random() * 0.4));
+                    positions.setY(j, positions.getY(j) * (0.8 + Math.random() * 0.4));
+                    positions.setZ(j, positions.getZ(j) * (0.8 + Math.random() * 0.4));
+                }
+                rockGeometry.computeVertexNormals();
+                
+                const rockMaterial = new THREE.MeshStandardMaterial({ 
+                    color: new THREE.Color().setHSL(0.08, 0.05, 0.3 + Math.random() * 0.5),
+                    roughness: 0.7
+                });
+                const rock = new THREE.Mesh(rockGeometry, rockMaterial);
+                rock.position.set(
+                    (Math.random() - 0.5) * spread,
+                    size * 0.3,
+                    (Math.random() - 0.5) * spread
+                );
+                rock.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+                rock.castShadow = true;
+                rock.receiveShadow = true;
+                rockGroup.add(rock);
+            }
+            
+            return rockGroup;
+        }
+
+        // Create path
+        function createGravelPath(startX, startZ, endX, endZ) {
+            const path = new THREE.Group();
+            const steps = 30;
+            
+            for (let i = 0; i < steps; i++) {
+                const t = i / steps;
+                const x = startX + (endX - startX) * t;
+                const z = startZ + (endZ - startZ) * t + Math.sin(t * Math.PI * 2) * 1.5;
+                
                 const stoneGeometry = new THREE.CylinderGeometry(
                     0.4 + Math.random() * 0.3,
                     0.5 + Math.random() * 0.3,
-                    0.08,
+                    0.05 + Math.random() * 0.05,
                     8
                 );
                 const stoneMaterial = new THREE.MeshStandardMaterial({ 
-                    color: new THREE.Color().setHSL(0.1, 0.05, 0.5 + Math.random() * 0.3),
+                    color: new THREE.Color().setHSL(0.1, 0.05, 0.4 + Math.random() * 0.3),
                     roughness: 0.7
                 });
                 const stone = new THREE.Mesh(stoneGeometry, stoneMaterial);
-                
-                const x = -18 + i * 0.8;
-                const z = -4 + Math.sin(i * 0.3) * 1.5;
-                stone.position.set(x, 0.04, z);
-                stone.rotation.x = (Math.random() - 0.5) * 0.1;
-                stone.rotation.z = (Math.random() - 0.5) * 0.1;
+                stone.position.set(x, 0.03, z);
+                stone.rotation.x = (Math.random() - 0.5) * 0.2;
+                stone.rotation.z = (Math.random() - 0.5) * 0.2;
                 stone.receiveShadow = true;
                 stone.castShadow = true;
                 path.add(stone);
@@ -591,101 +544,7 @@
             return path;
         }
 
-        // Fence
-        function createDetailedFence() {
-            const fence = new THREE.Group();
-            
-            // Horizontal rails
-            for (let rail = 0; rail < 2; rail++) {
-                const railGeometry = new THREE.TorusGeometry(12, 0.08, 8, 40);
-                const railMaterial = new THREE.MeshStandardMaterial({ 
-                    color: 0xDEB887,
-                    roughness: 0.6
-                });
-                const fenceRail = new THREE.Mesh(railGeometry, railMaterial);
-                fenceRail.rotation.x = Math.PI / 2;
-                fenceRail.position.set(-18, 0.5 + rail * 0.6, -10);
-                fenceRail.scale.set(1, 1, 0.3);
-                fenceRail.castShadow = true;
-                fenceRail.receiveShadow = true;
-                fence.add(fenceRail);
-            }
-            
-            // Vertical posts
-            for (let i = 0; i < 36; i++) {
-                const postGeometry = new THREE.CylinderGeometry(0.08, 0.1, 1.8, 8);
-                const postMaterial = new THREE.MeshStandardMaterial({ 
-                    color: 0xDEB887,
-                    roughness: 0.6
-                });
-                const post = new THREE.Mesh(postGeometry, postMaterial);
-                
-                const angle = (i / 36) * Math.PI * 2;
-                post.position.set(
-                    Math.cos(angle) * 12 - 18,
-                    0.9,
-                    Math.sin(angle) * 12 - 10
-                );
-                post.castShadow = true;
-                post.receiveShadow = true;
-                fence.add(post);
-            }
-            
-            return fence;
-        }
-
-        // Pond with water effect
-        function createPond() {
-            const pond = new THREE.Group();
-            
-            // Ground depression
-            const groundDepression = new THREE.Mesh(
-                new THREE.CylinderGeometry(3.5, 4, 0.5, 32),
-                new THREE.MeshStandardMaterial({ color: 0x5a8f3c, roughness: 0.9 })
-            );
-            groundDepression.position.y = -0.2;
-            pond.add(groundDepression);
-            
-            // Water
-            const waterGeometry = new THREE.CircleGeometry(3.2, 32);
-            const waterMaterial = new THREE.MeshPhysicalMaterial({ 
-                color: 0x4a90d9,
-                roughness: 0.1,
-                metalness: 0.3,
-                opacity: 0.8,
-                transparent: true
-            });
-            const water = new THREE.Mesh(waterGeometry, waterMaterial);
-            water.rotation.x = -Math.PI / 2;
-            water.position.y = 0.05;
-            water.receiveShadow = true;
-            pond.add(water);
-            
-            // Rocks around pond
-            for (let i = 0; i < 12; i++) {
-                const rockGeometry = new THREE.IcosahedronGeometry(0.3 + Math.random() * 0.4, 1);
-                const rockMaterial = new THREE.MeshStandardMaterial({ 
-                    color: 0x808080,
-                    roughness: 0.7
-                });
-                const rock = new THREE.Mesh(rockGeometry, rockMaterial);
-                const angle = (i / 12) * Math.PI * 2;
-                rock.position.set(
-                    Math.cos(angle) * 3.8,
-                    0.2,
-                    Math.sin(angle) * 3.8
-                );
-                rock.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
-                rock.castShadow = true;
-                rock.receiveShadow = true;
-                pond.add(rock);
-            }
-            
-            pond.position.set(10, 0, 5);
-            return pond;
-        }
-
-        // Smiski class with enhanced AI
+        // Smiski class
         class Smiski {
             constructor(name, color, startPosition) {
                 this.name = name;
@@ -808,7 +667,7 @@
                 
                 this.mesh.position.copy(startPosition);
                 
-                // Enhanced personality
+                // Personality
                 this.personality = {
                     activityLevel: 0.3 + Math.random() * 0.7,
                     socialLevel: Math.random(),
@@ -816,17 +675,13 @@
                     curiosityLevel: Math.random()
                 };
                 
-                // Daily schedule
                 this.schedule = this.generateSchedule();
-                
                 this.decideNewAction();
             }
             
             generateSchedule() {
                 const now = new Date();
-                const hour = now.getHours();
-                
-                const schedule = {
+                return {
                     wakeUp: 6 + Math.floor(Math.random() * 2),
                     breakfast: 8 + Math.floor(Math.random() * 2),
                     morningActivity: 10,
@@ -836,8 +691,6 @@
                     dinner: 19,
                     bedtime: 22 + Math.floor(Math.random() * 2)
                 };
-                
-                return schedule;
             }
             
             getCurrentActivity() {
@@ -870,7 +723,6 @@
                 this.stateTimer = 5 + Math.random() * 15;
                 this.lastStateChange = performance.now() / 1000;
                 
-                // Set target based on state
                 if (this.state === 'walking' || this.state === 'exploring') {
                     const angle = Math.random() * Math.PI * 2;
                     const distance = 2 + Math.random() * 10;
@@ -892,23 +744,20 @@
                         -5 + Math.random() * 15
                     );
                 } else {
-                    // Near house
                     this.targetPosition.set(
-                        -18 + (Math.random() - 0.5) * 8,
+                        -3 + (Math.random() - 0.5) * 8,
                         0,
-                        -10 + (Math.random() - 0.5) * 8
+                        -3 + (Math.random() - 0.5) * 8
                     );
                 }
                 
-                // Clamp to bounds
-                this.targetPosition.x = Math.max(-30, Math.min(15, this.targetPosition.x));
-                this.targetPosition.z = Math.max(-20, Math.min(15, this.targetPosition.z));
+                this.targetPosition.x = Math.max(-35, Math.min(35, this.targetPosition.x));
+                this.targetPosition.z = Math.max(-35, Math.min(35, this.targetPosition.z));
             }
             
             update(deltaTime) {
                 const now = performance.now() / 1000;
                 
-                // Check if schedule changed
                 if (now - this.lastStateChange > 60) {
                     const newActivity = this.getCurrentActivity();
                     if (newActivity !== this.state) {
@@ -921,7 +770,6 @@
                     this.decideNewAction();
                 }
                 
-                // Movement
                 if (this.position.distanceTo(this.targetPosition) > 0.2) {
                     const direction = this.targetPosition.clone().sub(this.position).normalize();
                     const moveSpeed = this.state === 'exploring' ? this.speed * 0.7 : this.speed;
@@ -933,21 +781,18 @@
                         this.mesh.rotation.y += (targetRotation - this.mesh.rotation.y) * 0.1;
                     }
                     
-                    // Walking animation
                     this.animationTime += deltaTime * 10;
                     const bobAmount = Math.sin(this.animationTime) * 0.15;
                     this.mesh.position.y = bobAmount;
                     this.leftArm.rotation.x = Math.sin(this.animationTime) * 0.6;
                     this.rightArm.rotation.x = -Math.sin(this.animationTime) * 0.6;
                 } else {
-                    // Idle animation
                     this.animationTime += deltaTime * 1.5;
                     const breatheAmount = Math.sin(this.animationTime) * 0.03;
                     this.mesh.position.y = breatheAmount;
                     this.leftArm.rotation.x = Math.sin(this.animationTime * 0.5) * 0.1;
                     this.rightArm.rotation.x = Math.sin(this.animationTime * 0.5 + Math.PI) * 0.1;
                     
-                    // Occasionally look around
                     if (Math.random() < 0.01) {
                         this.mesh.rotation.y += (Math.random() - 0.5) * 0.5;
                     }
@@ -958,210 +803,54 @@
             }
         }
 
-        // Build the scene
-        const house = createDetailedHouse();
-        scene.add(house);
+        // Load house model and build scene
+        const loader = new GLTFLoader();
+        let houseModel = null;
 
-        const garden = createGarden();
-        scene.add(garden);
-
-        const trees = [
-            createDetailedTree(-5, 15, 1.2),
-            createDetailedTree(15, -12, 0.9),
-            createDetailedTree(-28, 8, 1.1),
-            createDetailedTree(12, 18, 0.8),
-            createDetailedTree(-25, -15, 1.0),
-            createDetailedTree(8, -5, 0.9),
-            createDetailedTree(-2, 20, 1.1),
-        ];
-        trees.forEach(tree => scene.add(tree));
-
-        const path = createStonePath();
-        scene.add(path);
-
-        const fence = createDetailedFence();
-        scene.add(fence);
-
-        const pond = createPond();
-        scene.add(pond);
-
-        // Mailbox
-        const mailbox = new THREE.Group();
-        const post = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.08, 0.12, 2.5, 8),
-            new THREE.MeshStandardMaterial({ color: 0x8B4513, roughness: 0.6 })
-        );
-        post.position.y = 1.25;
-        post.castShadow = true;
-        mailbox.add(post);
-        
-        const box = new THREE.Mesh(
-            new THREE.BoxGeometry(0.5, 0.6, 0.9),
-            new THREE.MeshStandardMaterial({ 
-                color: 0x4169E1,
-                roughness: 0.3,
-                metalness: 0.5
-            })
-        );
-        box.position.y = 2.6;
-        box.castShadow = true;
-        mailbox.add(box);
-        
-        mailbox.position.set(-24, 0, -5);
-        scene.add(mailbox);
-
-        // Create Smiskis
-        const smiskis = [];
-        const smiskiConfigs = [
-            { name: 'Luna', color: 0xFFB6C1, pos: new THREE.Vector3(-15, 0, -5) },
-            { name: 'Mochi', color: 0x98FB98, pos: new THREE.Vector3(-10, 0, -8) },
-            { name: 'Pippin', color: 0xFFD700, pos: new THREE.Vector3(-12, 0, -3) },
-            { name: 'Gizmo', color: 0xDDA0DD, pos: new THREE.Vector3(-17, 0, -7) }
-        ];
-
-        smiskiConfigs.forEach(config => {
-            const smiski = new Smiski(config.name, config.color, config.pos);
-            smiskis.push(smiski);
-            scene.add(smiski.mesh);
-        });
-
-        // Raycaster for clicking
-        const raycaster = new THREE.Raycaster();
-        const mouse = new THREE.Vector2();
-        const smiskiMeshes = smiskis.map(s => s.mesh);
-
-        window.addEventListener('click', (event) => {
-            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+        function buildScene() {
+            // Add ground
+            const ground = createGround();
+            scene.add(ground);
             
-            raycaster.setFromCamera(mouse, camera);
-            const intersects = raycaster.intersectObjects(smiskiMeshes, true);
+            // Add grass patches around the scene
+            const grass = createGrassPatches();
+            scene.add(grass);
             
-            if (intersects.length > 0) {
-                let hitObject = intersects[0].object;
-                while (hitObject && !smiskiMeshes.includes(hitObject)) {
-                    hitObject = hitObject.parent;
-                }
-                
-                if (hitObject) {
-                    const smiski = smiskis.find(s => s.mesh === hitObject);
-                    if (smiski) {
-                        const infoDiv = document.getElementById('smiski-info');
-                        document.getElementById('smiski-name').textContent = smiski.name;
-                        
-                        const statusText = {
-                            'sleeping': '😴 Sleeping',
-                            'eating': '🍽️ Eating',
-                            'walking': '🚶 Walking',
-                            'exploring': '🔍 Exploring',
-                            'gardening': '🌱 Gardening',
-                            'playing': '🎮 Playing',
-                            'sitting': '💺 Sitting',
-                            'idle': '💭 Daydreaming'
-                        };
-                        
-                        document.getElementById('smiski-status').textContent = 
-                            statusText[smiski.state] || smiski.state;
-                        infoDiv.style.display = 'block';
-                        
-                        setTimeout(() => {
-                            infoDiv.style.display = 'none';
-                        }, 4000);
-                    }
-                }
-            }
-        });
-
-        // Time display
-        function updateTimeDisplay() {
-            const now = new Date();
-            const hours = now.getHours().toString().padStart(2, '0');
-            const minutes = now.getMinutes().toString().padStart(2, '0');
-            document.getElementById('time-display').textContent = `${hours}:${minutes}`;
+            // Add trees in a nice arrangement
+            const treePositions = [
+                [-25, -25], [25, -25], [-25, 25], [25, 25],
+                [-30, 0], [30, 0], [0, -30], [0, 30],
+                [-20, -30], [20, -30], [-30, -20], [30, -20],
+                [-15, 20], [15, 20], [20, -15], [-20, -15],
+                [-35, -15], [35, -15], [-35, 15], [35, 15]
+            ];
             
-            const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-            const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-            document.getElementById('date-display').textContent = 
-                `${days[now.getDay()]}, ${months[now.getMonth()]} ${now.getDate()}`;
+            treePositions.forEach(([x, z]) => {
+                const tree = createTree(x, z, 0.8 + Math.random() * 0.6);
+                scene.add(tree);
+            });
             
-            const hour = now.getHours();
-            let weatherEmoji = '☀️ Sunny';
-            if (hour >= 5 && hour < 8) weatherEmoji = '🌅 Dawn';
-            else if (hour >= 8 && hour < 17) weatherEmoji = '☀️ Sunny';
-            else if (hour >= 17 && hour < 19) weatherEmoji = '🌅 Dusk';
-            else weatherEmoji = '🌙 Night';
-            document.getElementById('weather-display').textContent = weatherEmoji;
-        }
-
-        // Animation loop
-        const clock = new THREE.Clock();
-        let lastTimeUpdate = 0;
-
-        function animate() {
-            requestAnimationFrame(animate);
+            // Add flower patches
+            const flowerPositions = [
+                [-20, -20], [-20, -10], [-10, -20],
+                [20, -20], [20, -10], [10, -20],
+                [-20, 20], [-20, 10], [-10, 20],
+                [20, 20], [20, 10], [10, 20],
+                [-28, -8], [28, -8], [-8, -28], [8, -28]
+            ];
             
-            const deltaTime = Math.min(clock.getDelta(), 0.1);
+            flowerPositions.forEach(([x, z]) => {
+                const flowers = createFlowers(x, z, 15 + Math.floor(Math.random() * 20));
+                scene.add(flowers);
+            });
             
-            const now = Date.now();
-            if (now - lastTimeUpdate > 1000) {
-                updateTimeDisplay();
-                lastTimeUpdate = now;
-            }
+            // Add rocks scattered around
+            const rocks1 = createRocks(15, 10);
+            rocks1.position.set(-25, 0, -15);
+            scene.add(rocks1);
             
-            // Dynamic lighting based on time
-            const date = new Date();
-            const hour = date.getHours() + date.getMinutes() / 60;
+            const rocks2 = createRocks(10, 8);
+            rocks2.position.set(20, 0, -25);
+            scene.add(rocks2);
             
-            if (hour >= 6 && hour < 20) {
-                const dayProgress = (hour - 6) / 14;
-                const intensity = 1 + Math.sin(dayProgress * Math.PI) * 2;
-                sunLight.intensity = Math.max(0.3, intensity);
-                sunLight.position.y = Math.sin(dayProgress * Math.PI) * 50;
-                
-                const skyTopColor = new THREE.Color().setHSL(0.58, 0.8, 0.35 + dayProgress * 0.3);
-                const skyBottomColor = new THREE.Color().setHSL(0.58, 0.3, 0.65 + dayProgress * 0.2);
-                skyMaterial.uniforms.topColor.value = skyTopColor;
-                skyMaterial.uniforms.bottomColor.value = skyBottomColor;
-                
-                scene.fog.color.copy(new THREE.Color().setHSL(0.58, 0.3, 0.55 + dayProgress * 0.3));
-                renderer.toneMappingExposure = 0.9 + dayProgress * 0.8;
-                scene.background.copy(skyTopColor);
-            } else {
-                sunLight.intensity = 0.08;
-                sunLight.position.y = 5;
-                
-                const nightColor = new THREE.Color(0x0a0a2e);
-                skyMaterial.uniforms.topColor.value = nightColor;
-                skyMaterial.uniforms.bottomColor.value = new THREE.Color(0x1a1a3e);
-                scene.fog.color.set(0x0a0a2e);
-                renderer.toneMappingExposure = 0.4;
-                scene.background.copy(nightColor);
-            }
-            
-            // Update all Smiskis
-            smiskis.forEach(smiski => smiski.update(deltaTime));
-            
-            controls.update();
-            renderer.render(scene, camera);
-            labelRenderer.render(scene, camera);
-        }
-
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            labelRenderer.setSize(window.innerWidth, window.innerHeight);
-        });
-
-        // Start
-        updateTimeDisplay();
-        animate();
-
-        console.log('🌟 Enhanced Smiski World is ready!');
-        console.log('🏠 Features: Detailed house, garden, pond, dynamic lighting');
-        console.log('👾 4 Smiskis with daily schedules and personalities');
-        console.log('🌅 Real-time day/night cycle');
-        console.log('🕹️ Click Smiskis to see their activities');
-    </script>
-</body>
-</html>
+            const rocks3

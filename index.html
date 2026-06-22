@@ -1,10 +1,9 @@
-<!-- index.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smiski World - Interactive 3D Environment</title>
+    <title>Smiski World</title>
     <style>
         * {
             margin: 0;
@@ -32,42 +31,45 @@
             left: 20px;
             z-index: 100;
             color: white;
-            background: rgba(0, 0, 0, 0.7);
-            padding: 15px;
-            border-radius: 10px;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 15px 20px;
+            border-radius: 12px;
             backdrop-filter: blur(10px);
             pointer-events: none;
+            font-family: 'Segoe UI', sans-serif;
         }
 
         #time-display {
-            font-size: 24px;
+            font-size: 28px;
             font-weight: bold;
             margin-bottom: 5px;
         }
 
         #date-display {
             font-size: 14px;
-            opacity: 0.8;
+            opacity: 0.9;
             margin-bottom: 5px;
         }
 
         #weather-display {
             font-size: 16px;
+            opacity: 0.9;
         }
 
         #controls-info {
             position: fixed;
-            bottom: 20px;
+            bottom: 30px;
             left: 50%;
             transform: translateX(-50%);
             z-index: 100;
             color: white;
-            background: rgba(0, 0, 0, 0.7);
-            padding: 10px 20px;
-            border-radius: 20px;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 12px 24px;
+            border-radius: 25px;
             backdrop-filter: blur(10px);
-            font-size: 12px;
+            font-size: 13px;
             text-align: center;
+            letter-spacing: 0.5px;
         }
 
         #smiski-info {
@@ -77,10 +79,11 @@
             z-index: 100;
             color: white;
             background: rgba(0, 0, 0, 0.7);
-            padding: 15px;
-            border-radius: 10px;
+            padding: 15px 20px;
+            border-radius: 12px;
             backdrop-filter: blur(10px);
             display: none;
+            transition: all 0.3s ease;
         }
 
         .smiski-name {
@@ -92,6 +95,7 @@
         .smiski-status {
             font-size: 14px;
             opacity: 0.9;
+            text-transform: capitalize;
         }
     </style>
 </head>
@@ -105,7 +109,7 @@
     </div>
 
     <div id="controls-info">
-        🖱️ Left Click + Drag: Rotate | Scroll: Zoom | Right Click + Drag: Pan | Click on Smiski: View Info
+        🖱️ Left Click + Drag: Rotate | Scroll: Zoom | Right Click: Drag: Pan | Click Smiski: View Info
     </div>
 
     <div id="smiski-info">
@@ -129,15 +133,21 @@
 
         // Scene setup
         const scene = new THREE.Scene();
-        scene.fog = new THREE.Fog(0x87ceeb, 50, 200);
+        scene.background = new THREE.Color(0x87CEEB);
+        scene.fog = new THREE.FogExp2(0x87CEEB, 0.0008);
 
-        // Renderers
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        // Renderer with better settings
+        const renderer = new THREE.WebGLRenderer({ 
+            antialias: true,
+            alpha: false
+        });
         renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         renderer.shadowMap.enabled = true;
         renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         renderer.toneMapping = THREE.ACESFilmicToneMapping;
-        renderer.toneMappingExposure = 1.0;
+        renderer.toneMappingExposure = 1.2;
+        renderer.outputColorSpace = THREE.SRGBColorSpace;
         document.getElementById('canvas-container').appendChild(renderer.domElement);
 
         const labelRenderer = new CSS2DRenderer();
@@ -148,49 +158,51 @@
         document.getElementById('canvas-container').appendChild(labelRenderer.domElement);
 
         // Camera
-        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 500);
-        camera.position.set(30, 25, 40);
-        camera.lookAt(0, 0, 0);
+        const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.5, 300);
+        camera.position.set(25, 20, 30);
+        camera.lookAt(-8, 0, -5);
 
-        // Orbit controls
+        // Better orbit controls
         const controls = new OrbitControls(camera, renderer.domElement);
         controls.enableDamping = true;
-        controls.dampingFactor = 0.05;
-        controls.minDistance = 5;
-        controls.maxDistance = 100;
-        controls.maxPolarAngle = Math.PI / 2.2;
-        controls.target.set(0, 1, 0);
+        controls.dampingFactor = 0.08;
+        controls.minDistance = 3;
+        controls.maxDistance = 80;
+        controls.maxPolarAngle = Math.PI / 2.1;
+        controls.target.set(-8, 0.5, -5);
         controls.update();
 
-        // Lighting
-        const ambientLight = new THREE.AmbientLight(0x404060, 0.5);
+        // Enhanced lighting system
+        const ambientLight = new THREE.AmbientLight(0x404066, 0.6);
         scene.add(ambientLight);
 
-        const sunLight = new THREE.DirectionalLight(0xfff4e0, 2.0);
-        sunLight.position.set(50, 50, 30);
+        // Hemisphere light for more natural ambient
+        const hemiLight = new THREE.HemisphereLight(0xddeeff, 0x889966, 0.5);
+        scene.add(hemiLight);
+
+        // Main sun light
+        const sunLight = new THREE.DirectionalLight(0xfff8e7, 3.0);
+        sunLight.position.set(30, 40, 20);
         sunLight.castShadow = true;
-        sunLight.shadow.mapSize.width = 2048;
-        sunLight.shadow.mapSize.height = 2048;
+        sunLight.shadow.mapSize.width = 4096;
+        sunLight.shadow.mapSize.height = 4096;
         sunLight.shadow.camera.near = 0.5;
         sunLight.shadow.camera.far = 200;
-        sunLight.shadow.camera.left = -50;
-        sunLight.shadow.camera.right = 50;
-        sunLight.shadow.camera.top = 50;
-        sunLight.shadow.camera.bottom = -50;
-        sunLight.shadow.bias = -0.0001;
+        sunLight.shadow.camera.left = -60;
+        sunLight.shadow.camera.right = 60;
+        sunLight.shadow.camera.top = 60;
+        sunLight.shadow.camera.bottom = -60;
+        sunLight.shadow.bias = -0.00005;
+        sunLight.shadow.normalBias = 0.02;
         scene.add(sunLight);
 
-        const fillLight = new THREE.DirectionalLight(0x8899cc, 0.3);
-        fillLight.position.set(-20, 10, -20);
-        scene.add(fillLight);
-
-        // Sky
-        const skyGeometry = new THREE.SphereGeometry(150, 32, 32);
+        // Dynamic sky
+        const skyGeometry = new THREE.SphereGeometry(120, 32, 32);
         const skyMaterial = new THREE.ShaderMaterial({
             uniforms: {
                 topColor: { value: new THREE.Color(0x0077ff) },
                 bottomColor: { value: new THREE.Color(0xffffff) },
-                offset: { value: 20 },
+                offset: { value: 33 },
                 exponent: { value: 0.6 }
             },
             vertexShader: `
@@ -217,145 +229,265 @@
         const sky = new THREE.Mesh(skyGeometry, skyMaterial);
         scene.add(sky);
 
-        // Ground
-        const groundGeometry = new THREE.PlaneGeometry(200, 200);
+        // Textured ground with grass-like variation
+        const groundGeometry = new THREE.PlaneGeometry(200, 200, 50, 50);
+        const positions = groundGeometry.attributes.position;
+        
+        // Add subtle terrain variation
+        for (let i = 0; i < positions.count; i++) {
+            const x = positions.getX(i);
+            const y = positions.getY(i);
+            positions.setZ(i, (Math.sin(x * 0.1) * Math.cos(y * 0.1) * 0.5) + 
+                               (Math.sin(x * 0.3) * Math.cos(y * 0.2) * 0.2));
+        }
+        groundGeometry.computeVertexNormals();
+        
         const groundMaterial = new THREE.MeshStandardMaterial({ 
-            color: 0x4a7c3f,
-            roughness: 0.8,
-            metalness: 0.1
+            color: 0x5a8f3c,
+            roughness: 0.9,
+            metalness: 0.0,
+            flatShading: false
         });
         const ground = new THREE.Mesh(groundGeometry, groundMaterial);
         ground.rotation.x = -Math.PI / 2;
         ground.receiveShadow = true;
         scene.add(ground);
 
-        // House
-        function createHouse() {
+        // Create realistic house
+        function createDetailedHouse() {
             const house = new THREE.Group();
             
+            // Foundation
+            const foundationGeometry = new THREE.BoxGeometry(14, 0.5, 12);
+            const foundationMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0x808080,
+                roughness: 0.7,
+                metalness: 0.2
+            });
+            const foundation = new THREE.Mesh(foundationGeometry, foundationMaterial);
+            foundation.position.y = 0.25;
+            foundation.castShadow = true;
+            foundation.receiveShadow = true;
+            house.add(foundation);
+            
+            // Main walls
             const wallGeometry = new THREE.BoxGeometry(12, 8, 10);
             const wallMaterial = new THREE.MeshStandardMaterial({ 
                 color: 0xf5e6d3,
-                roughness: 0.6,
-                metalness: 0.1
+                roughness: 0.5,
+                metalness: 0.05
             });
             const walls = new THREE.Mesh(wallGeometry, wallMaterial);
-            walls.position.y = 4;
+            walls.position.y = 4.5;
             walls.castShadow = true;
             walls.receiveShadow = true;
             house.add(walls);
-
-            const roofGeometry = new THREE.ConeGeometry(8, 4, 4);
+            
+            // Wall details - horizontal siding lines
+            for (let i = 1; i < 8; i++) {
+                const sidingLine = new THREE.Mesh(
+                    new THREE.BoxGeometry(12.02, 0.05, 10.02),
+                    new THREE.MeshStandardMaterial({ color: 0xe8d5c0, roughness: 0.6 })
+                );
+                sidingLine.position.y = i;
+                house.add(sidingLine);
+            }
+            
+            // Roof with overhang
+            const roofGroup = new THREE.Group();
+            
+            // Main roof
+            const roofGeometry = new THREE.ConeGeometry(9, 5, 4);
             const roofMaterial = new THREE.MeshStandardMaterial({ 
-                color: 0x8b4513,
-                roughness: 0.7,
+                color: 0x8B4513,
+                roughness: 0.6,
                 metalness: 0.1
             });
             const roof = new THREE.Mesh(roofGeometry, roofMaterial);
-            roof.position.y = 10;
+            roof.position.y = 10.5;
             roof.rotation.y = Math.PI / 4;
             roof.castShadow = true;
             roof.receiveShadow = true;
-            house.add(roof);
-
-            const doorGeometry = new THREE.PlaneGeometry(2, 4);
+            roofGroup.add(roof);
+            
+            // Roof trim
+            const trimGeometry = new THREE.TorusGeometry(7.5, 0.2, 8, 4);
+            const trimMaterial = new THREE.MeshStandardMaterial({ color: 0x654321, roughness: 0.5 });
+            const trim = new THREE.Mesh(trimGeometry, trimMaterial);
+            trim.position.y = 8.5;
+            trim.rotation.x = Math.PI / 2;
+            roofGroup.add(trim);
+            
+            house.add(roofGroup);
+            
+            // Front door with frame
+            const doorFrame = new THREE.Mesh(
+                new THREE.BoxGeometry(2.2, 4.4, 0.2),
+                new THREE.MeshStandardMaterial({ color: 0x4a3728, roughness: 0.5 })
+            );
+            doorFrame.position.set(0, 2.2, 5.05);
+            house.add(doorFrame);
+            
+            const doorGeometry = new THREE.PlaneGeometry(1.8, 4);
             const doorMaterial = new THREE.MeshStandardMaterial({ 
-                color: 0x654321,
-                roughness: 0.5,
+                color: 0x8B6914,
+                roughness: 0.4,
                 metalness: 0.3
             });
             const door = new THREE.Mesh(doorGeometry, doorMaterial);
-            door.position.set(0, 2, 5.01);
+            door.position.set(0, 2.2, 5.1);
             door.castShadow = true;
             house.add(door);
-
-            const windowGeometry = new THREE.PlaneGeometry(1.5, 2);
-            const windowMaterial = new THREE.MeshStandardMaterial({ 
-                color: 0x87ceeb,
-                roughness: 0.2,
-                metalness: 0.5,
-                opacity: 0.7,
-                transparent: true
-            });
             
-            const window1 = new THREE.Mesh(windowGeometry, windowMaterial);
-            window1.position.set(3.01, 5, 0);
-            window1.rotation.y = Math.PI / 2;
-            house.add(window1);
-            
-            const window2 = new THREE.Mesh(windowGeometry, windowMaterial);
-            window2.position.set(-3.01, 5, 0);
-            window2.rotation.y = -Math.PI / 2;
-            house.add(window2);
-
-            const chimneyGeometry = new THREE.BoxGeometry(1.5, 3, 1.5);
-            const chimneyMaterial = new THREE.MeshStandardMaterial({ 
-                color: 0x8b4513,
-                roughness: 0.7
+            // Door knob
+            const knobGeometry = new THREE.SphereGeometry(0.1, 8, 8);
+            const knobMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0xFFD700,
+                roughness: 0.3,
+                metalness: 0.8
             });
-            const chimney = new THREE.Mesh(chimneyGeometry, chimneyMaterial);
-            chimney.position.set(3, 10.5, -2);
-            chimney.castShadow = true;
-            house.add(chimney);
-
-            house.position.set(-15, 0, -10);
+            const knob = new THREE.Mesh(knobGeometry, knobMaterial);
+            knob.position.set(0.6, 2.2, 5.2);
+            house.add(knob);
+            
+            // Windows with frames and glass
+            function createWindow(x, y, z, rotationY) {
+                const windowGroup = new THREE.Group();
+                
+                // Frame
+                const frameGeometry = new THREE.BoxGeometry(2, 2.5, 0.1);
+                const frameMaterial = new THREE.MeshStandardMaterial({ color: 0x4a3728, roughness: 0.5 });
+                const frame = new THREE.Mesh(frameGeometry, frameMaterial);
+                windowGroup.add(frame);
+                
+                // Glass
+                const glassGeometry = new THREE.PlaneGeometry(1.6, 2.1);
+                const glassMaterial = new THREE.MeshPhysicalMaterial({ 
+                    color: 0x87CEEB,
+                    roughness: 0.1,
+                    metalness: 0.1,
+                    opacity: 0.7,
+                    transparent: true
+                });
+                const glass = new THREE.Mesh(glassGeometry, glassMaterial);
+                glass.position.z = 0.06;
+                windowGroup.add(glass);
+                
+                // Window cross
+                const crossH = new THREE.Mesh(
+                    new THREE.BoxGeometry(1.6, 0.08, 0.08),
+                    new THREE.MeshStandardMaterial({ color: 0x4a3728 })
+                );
+                crossH.position.z = 0.07;
+                windowGroup.add(crossH);
+                
+                const crossV = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.08, 2.1, 0.08),
+                    new THREE.MeshStandardMaterial({ color: 0x4a3728 })
+                );
+                crossV.position.z = 0.07;
+                windowGroup.add(crossV);
+                
+                windowGroup.position.set(x, y, z);
+                windowGroup.rotation.y = rotationY;
+                windowGroup.castShadow = true;
+                
+                return windowGroup;
+            }
+            
+            // Front windows
+            house.add(createWindow(2.5, 5.5, 5.05, 0));
+            house.add(createWindow(-2.5, 5.5, 5.05, 0));
+            
+            // Side windows
+            house.add(createWindow(6.05, 5.5, 1.5, Math.PI / 2));
+            house.add(createWindow(-6.05, 5.5, -1.5, -Math.PI / 2));
+            
+            // Chimney
+            const chimneyGroup = new THREE.Group();
+            
+            const chimneyBase = new THREE.Mesh(
+                new THREE.BoxGeometry(1.8, 4, 1.8),
+                new THREE.MeshStandardMaterial({ color: 0x8B4513, roughness: 0.6 })
+            );
+            chimneyBase.position.set(3.5, 10, -2);
+            chimneyBase.castShadow = true;
+            chimneyBase.receiveShadow = true;
+            chimneyGroup.add(chimneyBase);
+            
+            const chimneyTop = new THREE.Mesh(
+                new THREE.BoxGeometry(2.2, 0.4, 2.2),
+                new THREE.MeshStandardMaterial({ color: 0x654321, roughness: 0.5 })
+            );
+            chimneyTop.position.set(3.5, 12.2, -2);
+            chimneyTop.castShadow = true;
+            chimneyGroup.add(chimneyTop);
+            
+            house.add(chimneyGroup);
+            
+            // Porch
+            const porchFloor = new THREE.Mesh(
+                new THREE.BoxGeometry(4, 0.2, 2),
+                new THREE.MeshStandardMaterial({ color: 0x8B7355, roughness: 0.7 })
+            );
+            porchFloor.position.set(0, 0.6, 6);
+            porchFloor.receiveShadow = true;
+            porchFloor.castShadow = true;
+            house.add(porchFloor);
+            
+            // Porch steps
+            for (let i = 0; i < 3; i++) {
+                const step = new THREE.Mesh(
+                    new THREE.BoxGeometry(2 - i * 0.2, 0.2, 0.5),
+                    new THREE.MeshStandardMaterial({ color: 0x808080, roughness: 0.7 })
+                );
+                step.position.set(0, 0.7 - i * 0.2, 7 - i * 0.5);
+                step.receiveShadow = true;
+                step.castShadow = true;
+                house.add(step);
+            }
+            
+            house.position.set(-18, 0, -10);
             return house;
         }
 
-        // Garden
-        function createGarden() {
-            const garden = new THREE.Group();
-            
-            for (let i = 0; i < 8; i++) {
-                const flower = new THREE.Group();
-                
-                const stemGeometry = new THREE.CylinderGeometry(0.05, 0.05, 1, 8);
-                const stemMaterial = new THREE.MeshStandardMaterial({ color: 0x228b22 });
-                const stem = new THREE.Mesh(stemGeometry, stemMaterial);
-                stem.position.y = 0.5;
-                flower.add(stem);
-                
-                const petalGeometry = new THREE.SphereGeometry(0.3, 8, 8);
-                const colors = [0xff69b4, 0xff1493, 0xff6347, 0xffd700, 0xff4500];
-                const petalMaterial = new THREE.MeshStandardMaterial({ 
-                    color: colors[Math.floor(Math.random() * colors.length)],
-                    roughness: 0.4
-                });
-                const petals = new THREE.Mesh(petalGeometry, petalMaterial);
-                petals.position.y = 1.1;
-                flower.add(petals);
-                
-                const angle = (i / 8) * Math.PI * 2;
-                flower.position.set(Math.cos(angle) * 8, 0, Math.sin(angle) * 8);
-                flower.position.x -= 15;
-                flower.position.z -= 10;
-                garden.add(flower);
-            }
-            
-            return garden;
-        }
-
-        // Trees
-        function createTree(x, z) {
+        // Create realistic trees
+        function createDetailedTree(x, z, scale = 1) {
             const tree = new THREE.Group();
             
-            const trunkGeometry = new THREE.CylinderGeometry(0.3, 0.4, 4, 8);
-            const trunkMaterial = new THREE.MeshStandardMaterial({ color: 0x8b4513 });
+            // Trunk with texture-like roughness
+            const trunkGeometry = new THREE.CylinderGeometry(0.3 * scale, 0.5 * scale, 5 * scale, 12);
+            const trunkMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0x6B4226,
+                roughness: 0.9,
+                metalness: 0.0
+            });
             const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
-            trunk.position.y = 2;
+            trunk.position.y = 2.5 * scale;
             trunk.castShadow = true;
             trunk.receiveShadow = true;
             tree.add(trunk);
             
-            for (let i = 0; i < 3; i++) {
-                const leafGeometry = new THREE.SphereGeometry(1.5, 8, 8);
+            // Leaf clusters (multiple for realism)
+            const leafColors = [
+                0x2d5a27, 0x3a7a32, 0x4a8c3f, 0x2d6a2d
+            ];
+            
+            for (let i = 0; i < 6; i++) {
+                const leafGeometry = new THREE.SphereGeometry(1.5 * scale, 12, 10);
                 const leafMaterial = new THREE.MeshStandardMaterial({ 
-                    color: new THREE.Color().setHSL(0.25 + Math.random() * 0.1, 0.8, 0.3 + Math.random() * 0.2)
+                    color: leafColors[i % leafColors.length],
+                    roughness: 0.7,
+                    metalness: 0.0
                 });
                 const leaves = new THREE.Mesh(leafGeometry, leafMaterial);
-                leaves.position.y = 3.5 + i * 1.2;
-                leaves.position.x = (Math.random() - 0.5) * 1;
-                leaves.position.z = (Math.random() - 0.5) * 1;
+                
+                const angle = (i / 6) * Math.PI * 2;
+                const heightVariation = 4 + i * 0.8 * scale;
+                leaves.position.y = heightVariation;
+                leaves.position.x = Math.cos(angle) * (1 + i * 0.2) * scale;
+                leaves.position.z = Math.sin(angle) * (1 + i * 0.2) * scale;
+                leaves.scale.setScalar(1 - i * 0.05);
                 leaves.castShadow = true;
                 leaves.receiveShadow = true;
                 tree.add(leaves);
@@ -365,20 +497,94 @@
             return tree;
         }
 
-        // Path
-        function createPath() {
+        // Garden with varied plants
+        function createGarden() {
+            const garden = new THREE.Group();
+            
+            // Garden bed
+            const bedGeometry = new THREE.BoxGeometry(16, 0.3, 16);
+            const bedMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0x4a3728,
+                roughness: 0.8
+            });
+            const bed = new THREE.Mesh(bedGeometry, bedMaterial);
+            bed.position.set(-18, 0.15, 2);
+            bed.receiveShadow = true;
+            garden.add(bed);
+            
+            // Various plants
+            for (let i = 0; i < 20; i++) {
+                const plant = new THREE.Group();
+                
+                const x = -18 + (Math.random() - 0.5) * 14;
+                const z = 2 + (Math.random() - 0.5) * 14;
+                
+                // Stem
+                const stemHeight = 0.5 + Math.random() * 1.5;
+                const stemGeometry = new THREE.CylinderGeometry(0.05, 0.08, stemHeight, 8);
+                const stemMaterial = new THREE.MeshStandardMaterial({ 
+                    color: new THREE.Color().setHSL(0.25 + Math.random() * 0.1, 0.8, 0.3)
+                });
+                const stem = new THREE.Mesh(stemGeometry, stemMaterial);
+                stem.position.y = stemHeight / 2;
+                stem.castShadow = true;
+                plant.add(stem);
+                
+                // Flower/leaf
+                const flowerType = Math.random();
+                let flower;
+                
+                if (flowerType < 0.6) {
+                    // Round flower
+                    const flowerGeometry = new THREE.SphereGeometry(0.2 + Math.random() * 0.3, 8, 6);
+                    const flowerMaterial = new THREE.MeshStandardMaterial({ 
+                        color: new THREE.Color().setHSL(Math.random(), 0.8, 0.6)
+                    });
+                    flower = new THREE.Mesh(flowerGeometry, flowerMaterial);
+                } else {
+                    // Tall plant
+                    const flowerGeometry = new THREE.ConeGeometry(0.15, 0.5, 8);
+                    const flowerMaterial = new THREE.MeshStandardMaterial({ 
+                        color: new THREE.Color().setHSL(Math.random(), 0.7, 0.5)
+                    });
+                    flower = new THREE.Mesh(flowerGeometry, flowerMaterial);
+                }
+                
+                flower.position.y = stemHeight;
+                flower.castShadow = true;
+                plant.add(flower);
+                
+                plant.position.set(x, 0.3, z);
+                garden.add(plant);
+            }
+            
+            return garden;
+        }
+
+        // Stone pathway
+        function createStonePath() {
             const path = new THREE.Group();
             
-            for (let i = 0; i < 15; i++) {
-                const stoneGeometry = new THREE.CylinderGeometry(0.5, 0.6, 0.1, 6);
+            for (let i = 0; i < 20; i++) {
+                const stoneGeometry = new THREE.CylinderGeometry(
+                    0.4 + Math.random() * 0.3,
+                    0.5 + Math.random() * 0.3,
+                    0.08,
+                    8
+                );
                 const stoneMaterial = new THREE.MeshStandardMaterial({ 
-                    color: 0x808080,
+                    color: new THREE.Color().setHSL(0.1, 0.05, 0.5 + Math.random() * 0.3),
                     roughness: 0.7
                 });
                 const stone = new THREE.Mesh(stoneGeometry, stoneMaterial);
-                stone.position.set(-15 + i * 0.8, 0.05, -3 + Math.sin(i * 0.5) * 2);
-                stone.rotation.z = (Math.random() - 0.5) * 0.2;
+                
+                const x = -18 + i * 0.8;
+                const z = -4 + Math.sin(i * 0.3) * 1.5;
+                stone.position.set(x, 0.04, z);
+                stone.rotation.x = (Math.random() - 0.5) * 0.1;
+                stone.rotation.z = (Math.random() - 0.5) * 0.1;
                 stone.receiveShadow = true;
+                stone.castShadow = true;
                 path.add(stone);
             }
             
@@ -386,18 +592,38 @@
         }
 
         // Fence
-        function createFence() {
+        function createDetailedFence() {
             const fence = new THREE.Group();
             
-            for (let i = 0; i < 30; i++) {
-                const postGeometry = new THREE.CylinderGeometry(0.1, 0.1, 1.5, 8);
-                const postMaterial = new THREE.MeshStandardMaterial({ color: 0xdeb887 });
+            // Horizontal rails
+            for (let rail = 0; rail < 2; rail++) {
+                const railGeometry = new THREE.TorusGeometry(12, 0.08, 8, 40);
+                const railMaterial = new THREE.MeshStandardMaterial({ 
+                    color: 0xDEB887,
+                    roughness: 0.6
+                });
+                const fenceRail = new THREE.Mesh(railGeometry, railMaterial);
+                fenceRail.rotation.x = Math.PI / 2;
+                fenceRail.position.set(-18, 0.5 + rail * 0.6, -10);
+                fenceRail.scale.set(1, 1, 0.3);
+                fenceRail.castShadow = true;
+                fenceRail.receiveShadow = true;
+                fence.add(fenceRail);
+            }
+            
+            // Vertical posts
+            for (let i = 0; i < 36; i++) {
+                const postGeometry = new THREE.CylinderGeometry(0.08, 0.1, 1.8, 8);
+                const postMaterial = new THREE.MeshStandardMaterial({ 
+                    color: 0xDEB887,
+                    roughness: 0.6
+                });
                 const post = new THREE.Mesh(postGeometry, postMaterial);
                 
-                const angle = (i / 30) * Math.PI * 2;
+                const angle = (i / 36) * Math.PI * 2;
                 post.position.set(
-                    Math.cos(angle) * 12 - 15,
-                    0.75,
+                    Math.cos(angle) * 12 - 18,
+                    0.9,
                     Math.sin(angle) * 12 - 10
                 );
                 post.castShadow = true;
@@ -408,76 +634,160 @@
             return fence;
         }
 
-        // Smiski class
+        // Pond with water effect
+        function createPond() {
+            const pond = new THREE.Group();
+            
+            // Ground depression
+            const groundDepression = new THREE.Mesh(
+                new THREE.CylinderGeometry(3.5, 4, 0.5, 32),
+                new THREE.MeshStandardMaterial({ color: 0x5a8f3c, roughness: 0.9 })
+            );
+            groundDepression.position.y = -0.2;
+            pond.add(groundDepression);
+            
+            // Water
+            const waterGeometry = new THREE.CircleGeometry(3.2, 32);
+            const waterMaterial = new THREE.MeshPhysicalMaterial({ 
+                color: 0x4a90d9,
+                roughness: 0.1,
+                metalness: 0.3,
+                opacity: 0.8,
+                transparent: true
+            });
+            const water = new THREE.Mesh(waterGeometry, waterMaterial);
+            water.rotation.x = -Math.PI / 2;
+            water.position.y = 0.05;
+            water.receiveShadow = true;
+            pond.add(water);
+            
+            // Rocks around pond
+            for (let i = 0; i < 12; i++) {
+                const rockGeometry = new THREE.IcosahedronGeometry(0.3 + Math.random() * 0.4, 1);
+                const rockMaterial = new THREE.MeshStandardMaterial({ 
+                    color: 0x808080,
+                    roughness: 0.7
+                });
+                const rock = new THREE.Mesh(rockGeometry, rockMaterial);
+                const angle = (i / 12) * Math.PI * 2;
+                rock.position.set(
+                    Math.cos(angle) * 3.8,
+                    0.2,
+                    Math.sin(angle) * 3.8
+                );
+                rock.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+                rock.castShadow = true;
+                rock.receiveShadow = true;
+                pond.add(rock);
+            }
+            
+            pond.position.set(10, 0, 5);
+            return pond;
+        }
+
+        // Smiski class with enhanced AI
         class Smiski {
             constructor(name, color, startPosition) {
                 this.name = name;
                 this.color = color;
                 this.position = startPosition.clone();
                 this.targetPosition = startPosition.clone();
-                this.speed = 2;
+                this.speed = 1.5 + Math.random() * 1;
                 this.state = 'idle';
                 this.stateTimer = 0;
-                this.animationTime = 0;
+                this.animationTime = Math.random() * Math.PI * 2;
+                this.lastStateChange = 0;
                 
                 this.mesh = new THREE.Group();
                 
                 // Body
-                const bodyGeometry = new THREE.CylinderGeometry(0.3, 0.4, 1.2, 16);
+                const bodyGeometry = new THREE.CapsuleGeometry(0.3, 0.8, 8, 16);
                 const bodyMaterial = new THREE.MeshStandardMaterial({ 
                     color: color,
-                    roughness: 0.5,
-                    metalness: 0.1
+                    roughness: 0.4,
+                    metalness: 0.05
                 });
                 this.body = new THREE.Mesh(bodyGeometry, bodyMaterial);
-                this.body.position.y = 0.6;
+                this.body.position.y = 0.8;
                 this.body.castShadow = true;
+                this.body.receiveShadow = true;
                 this.mesh.add(this.body);
                 
                 // Head
-                const headGeometry = new THREE.SphereGeometry(0.35, 16, 16);
+                const headGeometry = new THREE.SphereGeometry(0.4, 32, 32);
                 const headMaterial = new THREE.MeshStandardMaterial({ 
                     color: color,
-                    roughness: 0.4,
-                    metalness: 0.1
+                    roughness: 0.35,
+                    metalness: 0.05
                 });
                 this.head = new THREE.Mesh(headGeometry, headMaterial);
-                this.head.position.y = 1.4;
+                this.head.position.y = 1.7;
                 this.head.castShadow = true;
+                this.head.receiveShadow = true;
                 this.mesh.add(this.head);
                 
                 // Eyes
-                const eyeGeometry = new THREE.SphereGeometry(0.08, 8, 8);
-                const eyeMaterial = new THREE.MeshStandardMaterial({ color: 0x000000 });
+                const eyeGeometry = new THREE.SphereGeometry(0.09, 16, 16);
+                const eyeMaterial = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.1 });
                 
                 this.leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
-                this.leftEye.position.set(-0.12, 1.5, 0.3);
+                this.leftEye.position.set(-0.14, 1.85, 0.35);
                 this.mesh.add(this.leftEye);
                 
                 this.rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
-                this.rightEye.position.set(0.12, 1.5, 0.3);
+                this.rightEye.position.set(0.14, 1.85, 0.35);
                 this.mesh.add(this.rightEye);
                 
+                // Eye highlights
+                const highlightGeometry = new THREE.SphereGeometry(0.04, 8, 8);
+                const highlightMaterial = new THREE.MeshStandardMaterial({ 
+                    color: 0xffffff,
+                    roughness: 0.1,
+                    emissive: 0xffffff,
+                    emissiveIntensity: 0.5
+                });
+                
+                const leftHighlight = new THREE.Mesh(highlightGeometry, highlightMaterial);
+                leftHighlight.position.set(-0.12, 1.88, 0.42);
+                this.mesh.add(leftHighlight);
+                
+                const rightHighlight = new THREE.Mesh(highlightGeometry, highlightMaterial);
+                rightHighlight.position.set(0.16, 1.88, 0.42);
+                this.mesh.add(rightHighlight);
+                
                 // Smile
-                const smileGeometry = new THREE.TorusGeometry(0.1, 0.02, 8, 8, Math.PI);
-                const smileMaterial = new THREE.MeshStandardMaterial({ color: 0x000000 });
+                const smileShape = new THREE.Shape();
+                smileShape.absarc(0, 0, 0.12, Math.PI * 0.2, Math.PI * 0.8, true);
+                const smileGeometry = new THREE.ExtrudeGeometry(smileShape, {
+                    depth: 0.02,
+                    bevelEnabled: true,
+                    bevelThickness: 0.01,
+                    bevelSize: 0.01
+                });
+                const smileMaterial = new THREE.MeshStandardMaterial({ 
+                    color: 0x333333,
+                    roughness: 0.3
+                });
                 this.smile = new THREE.Mesh(smileGeometry, smileMaterial);
-                this.smile.position.set(0, 1.35, 0.25);
-                this.smile.rotation.z = Math.PI;
+                this.smile.position.set(0, 1.78, 0.3);
+                this.smile.rotation.x = 0.1;
                 this.mesh.add(this.smile);
                 
                 // Arms
-                const armGeometry = new THREE.CylinderGeometry(0.08, 0.08, 0.6, 8);
-                const armMaterial = new THREE.MeshStandardMaterial({ color: color });
+                const armGeometry = new THREE.CapsuleGeometry(0.07, 0.5, 4, 8);
+                const armMaterial = new THREE.MeshStandardMaterial({ 
+                    color: color,
+                    roughness: 0.4
+                });
                 
                 this.leftArm = new THREE.Mesh(armGeometry, armMaterial);
-                this.leftArm.position.set(-0.35, 1.0, 0);
+                this.leftArm.position.set(-0.37, 1.2, 0);
                 this.leftArm.rotation.z = 0.3;
                 this.leftArm.castShadow = true;
                 this.mesh.add(this.leftArm);
                 
                 this.rightArm = new THREE.Mesh(armGeometry, armMaterial);
-                this.rightArm.position.set(0.35, 1.0, 0);
+                this.rightArm.position.set(0.37, 1.2, 0);
                 this.rightArm.rotation.z = -0.3;
                 this.rightArm.castShadow = true;
                 this.mesh.add(this.rightArm);
@@ -486,96 +796,161 @@
                 const labelDiv = document.createElement('div');
                 labelDiv.textContent = name;
                 labelDiv.style.color = 'white';
-                labelDiv.style.fontSize = '12px';
+                labelDiv.style.fontSize = '11px';
                 labelDiv.style.fontWeight = 'bold';
-                labelDiv.style.textShadow = '1px 1px 2px black';
+                labelDiv.style.textShadow = '1px 1px 3px rgba(0,0,0,0.8)';
+                labelDiv.style.background = 'rgba(0,0,0,0.5)';
+                labelDiv.style.padding = '2px 8px';
+                labelDiv.style.borderRadius = '10px';
                 this.label = new CSS2DObject(labelDiv);
-                this.label.position.y = 2;
+                this.label.position.y = 2.3;
                 this.mesh.add(this.label);
                 
                 this.mesh.position.copy(startPosition);
                 
-                // AI personality
+                // Enhanced personality
                 this.personality = {
-                    activityLevel: Math.random(),
+                    activityLevel: 0.3 + Math.random() * 0.7,
                     socialLevel: Math.random(),
-                    homePreference: Math.random()
+                    homePreference: 0.2 + Math.random() * 0.6,
+                    curiosityLevel: Math.random()
                 };
+                
+                // Daily schedule
+                this.schedule = this.generateSchedule();
                 
                 this.decideNewAction();
             }
             
-            decideNewAction() {
+            generateSchedule() {
+                const now = new Date();
+                const hour = now.getHours();
+                
+                const schedule = {
+                    wakeUp: 6 + Math.floor(Math.random() * 2),
+                    breakfast: 8 + Math.floor(Math.random() * 2),
+                    morningActivity: 10,
+                    lunch: 12 + Math.floor(Math.random() * 2),
+                    afternoonActivity: 14,
+                    eveningActivity: 17,
+                    dinner: 19,
+                    bedtime: 22 + Math.floor(Math.random() * 2)
+                };
+                
+                return schedule;
+            }
+            
+            getCurrentActivity() {
                 const now = new Date();
                 const hour = now.getHours() + now.getMinutes() / 60;
-                const actions = [];
                 
-                if (hour >= 6 && hour < 22) {
-                    actions.push('walking', 'exploring', 'sitting', 'idle');
-                    if (hour >= 8 && hour < 10) actions.push('gardening');
-                    if (hour >= 12 && hour < 14) actions.push('eating');
-                    if (hour >= 15 && hour < 18) actions.push('playing');
+                if (hour < this.schedule.wakeUp || hour >= this.schedule.bedtime) {
+                    return 'sleeping';
+                } else if (hour >= this.schedule.breakfast && hour < this.schedule.breakfast + 1) {
+                    return 'eating';
+                } else if (hour >= this.schedule.lunch && hour < this.schedule.lunch + 1) {
+                    return 'eating';
+                } else if (hour >= this.schedule.dinner && hour < this.schedule.dinner + 1) {
+                    return 'eating';
+                } else if (hour >= this.schedule.morningActivity && hour < this.schedule.morningActivity + 2) {
+                    return this.personality.activityLevel > 0.6 ? 'exploring' : 'gardening';
+                } else if (hour >= this.schedule.afternoonActivity && hour < this.schedule.afternoonActivity + 3) {
+                    return 'playing';
                 } else {
-                    actions.push('sleeping', 'idle');
+                    const rand = Math.random();
+                    if (rand < 0.3) return 'walking';
+                    if (rand < 0.6) return 'sitting';
+                    if (rand < 0.8) return 'exploring';
+                    return 'idle';
                 }
+            }
+            
+            decideNewAction() {
+                this.state = this.getCurrentActivity();
+                this.stateTimer = 5 + Math.random() * 15;
+                this.lastStateChange = performance.now() / 1000;
                 
-                if (this.personality.activityLevel > 0.7) {
-                    actions.push('walking', 'walking', 'exploring');
-                }
-                
-                if (this.personality.homePreference > 0.7) {
-                    actions.push('sitting', 'idle');
-                }
-                
-                this.state = actions[Math.floor(Math.random() * actions.length)];
-                this.stateTimer = 3 + Math.random() * 10;
-                
+                // Set target based on state
                 if (this.state === 'walking' || this.state === 'exploring') {
                     const angle = Math.random() * Math.PI * 2;
-                    const distance = 2 + Math.random() * 8;
+                    const distance = 2 + Math.random() * 10;
                     this.targetPosition.set(
                         this.position.x + Math.cos(angle) * distance,
                         0,
                         this.position.z + Math.sin(angle) * distance
                     );
-                    this.targetPosition.x = Math.max(-25, Math.min(5, this.targetPosition.x));
-                    this.targetPosition.z = Math.max(-20, Math.min(10, this.targetPosition.z));
                 } else if (this.state === 'gardening') {
-                    this.targetPosition.set(-15 + Math.random() * 10 - 5, 0, -10 + Math.random() * 10 - 5);
-                } else if (this.state === 'sleeping' || this.state === 'sitting') {
-                    this.targetPosition.set(-15 + Math.random() * 6 - 3, 0, -10 + Math.random() * 6 - 3);
+                    this.targetPosition.set(
+                        -18 + (Math.random() - 0.5) * 14,
+                        0,
+                        2 + (Math.random() - 0.5) * 14
+                    );
+                } else if (this.state === 'playing') {
+                    this.targetPosition.set(
+                        -10 + Math.random() * 20,
+                        0,
+                        -5 + Math.random() * 15
+                    );
+                } else {
+                    // Near house
+                    this.targetPosition.set(
+                        -18 + (Math.random() - 0.5) * 8,
+                        0,
+                        -10 + (Math.random() - 0.5) * 8
+                    );
                 }
+                
+                // Clamp to bounds
+                this.targetPosition.x = Math.max(-30, Math.min(15, this.targetPosition.x));
+                this.targetPosition.z = Math.max(-20, Math.min(15, this.targetPosition.z));
             }
             
             update(deltaTime) {
+                const now = performance.now() / 1000;
+                
+                // Check if schedule changed
+                if (now - this.lastStateChange > 60) {
+                    const newActivity = this.getCurrentActivity();
+                    if (newActivity !== this.state) {
+                        this.decideNewAction();
+                    }
+                }
+                
                 this.stateTimer -= deltaTime;
                 if (this.stateTimer <= 0) {
                     this.decideNewAction();
                 }
                 
-                if ((this.state === 'walking' || this.state === 'exploring' || this.state === 'gardening' || this.state === 'playing') && 
-                    this.position.distanceTo(this.targetPosition) > 0.1) {
-                    
+                // Movement
+                if (this.position.distanceTo(this.targetPosition) > 0.2) {
                     const direction = this.targetPosition.clone().sub(this.position).normalize();
-                    const distance = Math.min(this.speed * deltaTime, this.position.distanceTo(this.targetPosition));
+                    const moveSpeed = this.state === 'exploring' ? this.speed * 0.7 : this.speed;
+                    const distance = Math.min(moveSpeed * deltaTime, this.position.distanceTo(this.targetPosition));
                     this.position.add(direction.clone().multiplyScalar(distance));
                     
                     if (distance > 0.01) {
-                        const angle = Math.atan2(direction.x, direction.z);
-                        this.mesh.rotation.y = angle;
+                        const targetRotation = Math.atan2(direction.x, direction.z);
+                        this.mesh.rotation.y += (targetRotation - this.mesh.rotation.y) * 0.1;
                     }
                     
-                    this.animationTime += deltaTime * 8;
-                    const bobAmount = Math.sin(this.animationTime) * 0.1;
+                    // Walking animation
+                    this.animationTime += deltaTime * 10;
+                    const bobAmount = Math.sin(this.animationTime) * 0.15;
                     this.mesh.position.y = bobAmount;
-                    this.leftArm.rotation.x = Math.sin(this.animationTime) * 0.5;
-                    this.rightArm.rotation.x = -Math.sin(this.animationTime) * 0.5;
+                    this.leftArm.rotation.x = Math.sin(this.animationTime) * 0.6;
+                    this.rightArm.rotation.x = -Math.sin(this.animationTime) * 0.6;
                 } else {
-                    this.animationTime += deltaTime * 2;
-                    const breatheAmount = Math.sin(this.animationTime) * 0.05;
+                    // Idle animation
+                    this.animationTime += deltaTime * 1.5;
+                    const breatheAmount = Math.sin(this.animationTime) * 0.03;
                     this.mesh.position.y = breatheAmount;
                     this.leftArm.rotation.x = Math.sin(this.animationTime * 0.5) * 0.1;
                     this.rightArm.rotation.x = Math.sin(this.animationTime * 0.5 + Math.PI) * 0.1;
+                    
+                    // Occasionally look around
+                    if (Math.random() < 0.01) {
+                        this.mesh.rotation.y += (Math.random() - 0.5) * 0.5;
+                    }
                 }
                 
                 this.mesh.position.x = this.position.x;
@@ -583,86 +958,65 @@
             }
         }
 
-        // Time display
-        function updateTimeDisplay() {
-            const now = new Date();
-            const hours = now.getHours().toString().padStart(2, '0');
-            const minutes = now.getMinutes().toString().padStart(2, '0');
-            document.getElementById('time-display').textContent = `${hours}:${minutes}`;
-            
-            const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-            const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-            document.getElementById('date-display').textContent = `${days[now.getDay()]}, ${months[now.getMonth()]} ${now.getDate()}`;
-            
-            const hour = now.getHours();
-            let weatherEmoji = '☀️ Sunny';
-            if (hour >= 6 && hour < 18) weatherEmoji = '☀️ Sunny';
-            else if (hour >= 18 && hour < 20) weatherEmoji = '🌅 Evening';
-            else weatherEmoji = '🌙 Night';
-            document.getElementById('weather-display').textContent = weatherEmoji;
-        }
-
-        // Build scene
-        const house = createHouse();
+        // Build the scene
+        const house = createDetailedHouse();
         scene.add(house);
 
         const garden = createGarden();
         scene.add(garden);
 
         const trees = [
-            createTree(-5, 12),
-            createTree(8, -15),
-            createTree(-25, 5),
-            createTree(10, 15),
-            createTree(-20, -18),
-            createTree(5, -5)
+            createDetailedTree(-5, 15, 1.2),
+            createDetailedTree(15, -12, 0.9),
+            createDetailedTree(-28, 8, 1.1),
+            createDetailedTree(12, 18, 0.8),
+            createDetailedTree(-25, -15, 1.0),
+            createDetailedTree(8, -5, 0.9),
+            createDetailedTree(-2, 20, 1.1),
         ];
         trees.forEach(tree => scene.add(tree));
 
-        const path = createPath();
+        const path = createStonePath();
         scene.add(path);
 
-        const fence = createFence();
+        const fence = createDetailedFence();
         scene.add(fence);
 
-        // Mailbox
-        const mailboxGroup = new THREE.Group();
-        const mailboxPost = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.1, 0.15, 2, 8),
-            new THREE.MeshStandardMaterial({ color: 0x8b4513 })
-        );
-        mailboxPost.position.y = 1;
-        mailboxGroup.add(mailboxPost);
-
-        const mailboxBox = new THREE.Mesh(
-            new THREE.BoxGeometry(0.6, 0.6, 1),
-            new THREE.MeshStandardMaterial({ color: 0x4169e1, metalness: 0.5, roughness: 0.4 })
-        );
-        mailboxBox.position.set(0, 2.3, 0.3);
-        mailboxGroup.add(mailboxBox);
-        mailboxGroup.position.set(-21, 0, -5);
-        scene.add(mailboxGroup);
-
-        // Pond
-        const pondGeometry = new THREE.CircleGeometry(3, 32);
-        const pondMaterial = new THREE.MeshStandardMaterial({ 
-            color: 0x4682b4,
-            roughness: 0.1,
-            metalness: 0.8
-        });
-        const pond = new THREE.Mesh(pondGeometry, pondMaterial);
-        pond.rotation.x = -Math.PI / 2;
-        pond.position.set(10, 0.05, -12);
-        pond.receiveShadow = true;
+        const pond = createPond();
         scene.add(pond);
+
+        // Mailbox
+        const mailbox = new THREE.Group();
+        const post = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.08, 0.12, 2.5, 8),
+            new THREE.MeshStandardMaterial({ color: 0x8B4513, roughness: 0.6 })
+        );
+        post.position.y = 1.25;
+        post.castShadow = true;
+        mailbox.add(post);
+        
+        const box = new THREE.Mesh(
+            new THREE.BoxGeometry(0.5, 0.6, 0.9),
+            new THREE.MeshStandardMaterial({ 
+                color: 0x4169E1,
+                roughness: 0.3,
+                metalness: 0.5
+            })
+        );
+        box.position.y = 2.6;
+        box.castShadow = true;
+        mailbox.add(box);
+        
+        mailbox.position.set(-24, 0, -5);
+        scene.add(mailbox);
 
         // Create Smiskis
         const smiskis = [];
         const smiskiConfigs = [
-            { name: 'Luna', color: 0xffb6c1, pos: new THREE.Vector3(-12, 0, -5) },
-            { name: 'Mochi', color: 0x98fb98, pos: new THREE.Vector3(-8, 0, -8) },
-            { name: 'Pippin', color: 0xffd700, pos: new THREE.Vector3(-10, 0, -3) },
-            { name: 'Gizmo', color: 0xdda0dd, pos: new THREE.Vector3(-14, 0, -7) }
+            { name: 'Luna', color: 0xFFB6C1, pos: new THREE.Vector3(-15, 0, -5) },
+            { name: 'Mochi', color: 0x98FB98, pos: new THREE.Vector3(-10, 0, -8) },
+            { name: 'Pippin', color: 0xFFD700, pos: new THREE.Vector3(-12, 0, -3) },
+            { name: 'Gizmo', color: 0xDDA0DD, pos: new THREE.Vector3(-17, 0, -7) }
         ];
 
         smiskiConfigs.forEach(config => {
@@ -671,7 +1025,7 @@
             scene.add(smiski.mesh);
         });
 
-        // Raycaster for clicking Smiskis
+        // Raycaster for clicking
         const raycaster = new THREE.Raycaster();
         const mouse = new THREE.Vector2();
         const smiskiMeshes = smiskis.map(s => s.mesh);
@@ -694,15 +1048,50 @@
                     if (smiski) {
                         const infoDiv = document.getElementById('smiski-info');
                         document.getElementById('smiski-name').textContent = smiski.name;
-                        document.getElementById('smiski-status').textContent = `Status: ${smiski.state}`;
+                        
+                        const statusText = {
+                            'sleeping': '😴 Sleeping',
+                            'eating': '🍽️ Eating',
+                            'walking': '🚶 Walking',
+                            'exploring': '🔍 Exploring',
+                            'gardening': '🌱 Gardening',
+                            'playing': '🎮 Playing',
+                            'sitting': '💺 Sitting',
+                            'idle': '💭 Daydreaming'
+                        };
+                        
+                        document.getElementById('smiski-status').textContent = 
+                            statusText[smiski.state] || smiski.state;
                         infoDiv.style.display = 'block';
+                        
                         setTimeout(() => {
                             infoDiv.style.display = 'none';
-                        }, 3000);
+                        }, 4000);
                     }
                 }
             }
         });
+
+        // Time display
+        function updateTimeDisplay() {
+            const now = new Date();
+            const hours = now.getHours().toString().padStart(2, '0');
+            const minutes = now.getMinutes().toString().padStart(2, '0');
+            document.getElementById('time-display').textContent = `${hours}:${minutes}`;
+            
+            const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+            const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+            document.getElementById('date-display').textContent = 
+                `${days[now.getDay()]}, ${months[now.getMonth()]} ${now.getDate()}`;
+            
+            const hour = now.getHours();
+            let weatherEmoji = '☀️ Sunny';
+            if (hour >= 5 && hour < 8) weatherEmoji = '🌅 Dawn';
+            else if (hour >= 8 && hour < 17) weatherEmoji = '☀️ Sunny';
+            else if (hour >= 17 && hour < 19) weatherEmoji = '🌅 Dusk';
+            else weatherEmoji = '🌙 Night';
+            document.getElementById('weather-display').textContent = weatherEmoji;
+        }
 
         // Animation loop
         const clock = new THREE.Clock();
@@ -719,31 +1108,37 @@
                 lastTimeUpdate = now;
             }
             
-            // Update lighting based on time
+            // Dynamic lighting based on time
             const date = new Date();
             const hour = date.getHours() + date.getMinutes() / 60;
             
             if (hour >= 6 && hour < 20) {
-                const intensity = 1 + Math.sin((hour - 6) / 14 * Math.PI) * 1.5;
-                sunLight.intensity = Math.max(0.2, intensity);
-                sunLight.position.y = Math.sin((hour - 6) / 14 * Math.PI) * 40;
+                const dayProgress = (hour - 6) / 14;
+                const intensity = 1 + Math.sin(dayProgress * Math.PI) * 2;
+                sunLight.intensity = Math.max(0.3, intensity);
+                sunLight.position.y = Math.sin(dayProgress * Math.PI) * 50;
                 
-                const progress = (hour - 6) / 14;
-                const skyTopColor = new THREE.Color().setHSL(0.6, 0.8, 0.3 + progress * 0.3);
-                const skyBottomColor = new THREE.Color().setHSL(0.6, 0.3, 0.6 + progress * 0.2);
+                const skyTopColor = new THREE.Color().setHSL(0.58, 0.8, 0.35 + dayProgress * 0.3);
+                const skyBottomColor = new THREE.Color().setHSL(0.58, 0.3, 0.65 + dayProgress * 0.2);
                 skyMaterial.uniforms.topColor.value = skyTopColor;
                 skyMaterial.uniforms.bottomColor.value = skyBottomColor;
                 
-                scene.fog.color.setHSL(0.6, 0.3, 0.5 + progress * 0.3);
-                renderer.toneMappingExposure = 0.8 + progress * 0.7;
+                scene.fog.color.copy(new THREE.Color().setHSL(0.58, 0.3, 0.55 + dayProgress * 0.3));
+                renderer.toneMappingExposure = 0.9 + dayProgress * 0.8;
+                scene.background.copy(skyTopColor);
             } else {
-                sunLight.intensity = 0.05;
-                skyMaterial.uniforms.topColor.value = new THREE.Color(0x0a0a2e);
+                sunLight.intensity = 0.08;
+                sunLight.position.y = 5;
+                
+                const nightColor = new THREE.Color(0x0a0a2e);
+                skyMaterial.uniforms.topColor.value = nightColor;
                 skyMaterial.uniforms.bottomColor.value = new THREE.Color(0x1a1a3e);
                 scene.fog.color.set(0x0a0a2e);
-                renderer.toneMappingExposure = 0.3;
+                renderer.toneMappingExposure = 0.4;
+                scene.background.copy(nightColor);
             }
             
+            // Update all Smiskis
             smiskis.forEach(smiski => smiski.update(deltaTime));
             
             controls.update();
@@ -751,7 +1146,6 @@
             labelRenderer.render(scene, camera);
         }
 
-        // Window resize handler
         window.addEventListener('resize', () => {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
@@ -759,15 +1153,15 @@
             labelRenderer.setSize(window.innerWidth, window.innerHeight);
         });
 
-        // Initialize
+        // Start
         updateTimeDisplay();
         animate();
 
-        console.log('🌟 Smiski World is ready!');
-        console.log('🏠 4 Smiskis are living their lives in real-time');
-        console.log('🕹️ Use mouse to orbit, zoom, and pan');
-        console.log('👆 Click on a Smiski to see their info');
-        console.log('🌅 Day/night cycle synced to your local time');
+        console.log('🌟 Enhanced Smiski World is ready!');
+        console.log('🏠 Features: Detailed house, garden, pond, dynamic lighting');
+        console.log('👾 4 Smiskis with daily schedules and personalities');
+        console.log('🌅 Real-time day/night cycle');
+        console.log('🕹️ Click Smiskis to see their activities');
     </script>
 </body>
 </html>

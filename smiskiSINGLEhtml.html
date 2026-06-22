@@ -1,0 +1,773 @@
+<!-- index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smiski World - Interactive 3D Environment</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+            background: #000;
+        }
+
+        #canvas-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        #ui-overlay {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 100;
+            color: white;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+            pointer-events: none;
+        }
+
+        #time-display {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        #date-display {
+            font-size: 14px;
+            opacity: 0.8;
+            margin-bottom: 5px;
+        }
+
+        #weather-display {
+            font-size: 16px;
+        }
+
+        #controls-info {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 100;
+            color: white;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px 20px;
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            font-size: 12px;
+            text-align: center;
+        }
+
+        #smiski-info {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 100;
+            color: white;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+            display: none;
+        }
+
+        .smiski-name {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .smiski-status {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+    
+    <div id="ui-overlay">
+        <div id="time-display">12:00</div>
+        <div id="date-display">Monday, January 1</div>
+        <div id="weather-display">☀️ Sunny</div>
+    </div>
+
+    <div id="controls-info">
+        🖱️ Left Click + Drag: Rotate | Scroll: Zoom | Right Click + Drag: Pan | Click on Smiski: View Info
+    </div>
+
+    <div id="smiski-info">
+        <div class="smiski-name" id="smiski-name"></div>
+        <div class="smiski-status" id="smiski-status"></div>
+    </div>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+
+        // Scene setup
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.Fog(0x87ceeb, 50, 200);
+
+        // Renderers
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.0;
+        document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+        const labelRenderer = new CSS2DRenderer();
+        labelRenderer.setSize(window.innerWidth, window.innerHeight);
+        labelRenderer.domElement.style.position = 'absolute';
+        labelRenderer.domElement.style.top = '0px';
+        labelRenderer.domElement.style.pointerEvents = 'none';
+        document.getElementById('canvas-container').appendChild(labelRenderer.domElement);
+
+        // Camera
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 500);
+        camera.position.set(30, 25, 40);
+        camera.lookAt(0, 0, 0);
+
+        // Orbit controls
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.minDistance = 5;
+        controls.maxDistance = 100;
+        controls.maxPolarAngle = Math.PI / 2.2;
+        controls.target.set(0, 1, 0);
+        controls.update();
+
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0x404060, 0.5);
+        scene.add(ambientLight);
+
+        const sunLight = new THREE.DirectionalLight(0xfff4e0, 2.0);
+        sunLight.position.set(50, 50, 30);
+        sunLight.castShadow = true;
+        sunLight.shadow.mapSize.width = 2048;
+        sunLight.shadow.mapSize.height = 2048;
+        sunLight.shadow.camera.near = 0.5;
+        sunLight.shadow.camera.far = 200;
+        sunLight.shadow.camera.left = -50;
+        sunLight.shadow.camera.right = 50;
+        sunLight.shadow.camera.top = 50;
+        sunLight.shadow.camera.bottom = -50;
+        sunLight.shadow.bias = -0.0001;
+        scene.add(sunLight);
+
+        const fillLight = new THREE.DirectionalLight(0x8899cc, 0.3);
+        fillLight.position.set(-20, 10, -20);
+        scene.add(fillLight);
+
+        // Sky
+        const skyGeometry = new THREE.SphereGeometry(150, 32, 32);
+        const skyMaterial = new THREE.ShaderMaterial({
+            uniforms: {
+                topColor: { value: new THREE.Color(0x0077ff) },
+                bottomColor: { value: new THREE.Color(0xffffff) },
+                offset: { value: 20 },
+                exponent: { value: 0.6 }
+            },
+            vertexShader: `
+                varying vec3 vWorldPosition;
+                void main() {
+                    vec4 worldPosition = modelMatrix * vec4(position, 1.0);
+                    vWorldPosition = worldPosition.xyz;
+                    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                }
+            `,
+            fragmentShader: `
+                uniform vec3 topColor;
+                uniform vec3 bottomColor;
+                uniform float offset;
+                uniform float exponent;
+                varying vec3 vWorldPosition;
+                void main() {
+                    float h = normalize(vWorldPosition + offset).y;
+                    gl_FragColor = vec4(mix(bottomColor, topColor, max(pow(max(h, 0.0), exponent), 0.0)), 1.0);
+                }
+            `,
+            side: THREE.BackSide
+        });
+        const sky = new THREE.Mesh(skyGeometry, skyMaterial);
+        scene.add(sky);
+
+        // Ground
+        const groundGeometry = new THREE.PlaneGeometry(200, 200);
+        const groundMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0x4a7c3f,
+            roughness: 0.8,
+            metalness: 0.1
+        });
+        const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+        ground.rotation.x = -Math.PI / 2;
+        ground.receiveShadow = true;
+        scene.add(ground);
+
+        // House
+        function createHouse() {
+            const house = new THREE.Group();
+            
+            const wallGeometry = new THREE.BoxGeometry(12, 8, 10);
+            const wallMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0xf5e6d3,
+                roughness: 0.6,
+                metalness: 0.1
+            });
+            const walls = new THREE.Mesh(wallGeometry, wallMaterial);
+            walls.position.y = 4;
+            walls.castShadow = true;
+            walls.receiveShadow = true;
+            house.add(walls);
+
+            const roofGeometry = new THREE.ConeGeometry(8, 4, 4);
+            const roofMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0x8b4513,
+                roughness: 0.7,
+                metalness: 0.1
+            });
+            const roof = new THREE.Mesh(roofGeometry, roofMaterial);
+            roof.position.y = 10;
+            roof.rotation.y = Math.PI / 4;
+            roof.castShadow = true;
+            roof.receiveShadow = true;
+            house.add(roof);
+
+            const doorGeometry = new THREE.PlaneGeometry(2, 4);
+            const doorMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0x654321,
+                roughness: 0.5,
+                metalness: 0.3
+            });
+            const door = new THREE.Mesh(doorGeometry, doorMaterial);
+            door.position.set(0, 2, 5.01);
+            door.castShadow = true;
+            house.add(door);
+
+            const windowGeometry = new THREE.PlaneGeometry(1.5, 2);
+            const windowMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0x87ceeb,
+                roughness: 0.2,
+                metalness: 0.5,
+                opacity: 0.7,
+                transparent: true
+            });
+            
+            const window1 = new THREE.Mesh(windowGeometry, windowMaterial);
+            window1.position.set(3.01, 5, 0);
+            window1.rotation.y = Math.PI / 2;
+            house.add(window1);
+            
+            const window2 = new THREE.Mesh(windowGeometry, windowMaterial);
+            window2.position.set(-3.01, 5, 0);
+            window2.rotation.y = -Math.PI / 2;
+            house.add(window2);
+
+            const chimneyGeometry = new THREE.BoxGeometry(1.5, 3, 1.5);
+            const chimneyMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0x8b4513,
+                roughness: 0.7
+            });
+            const chimney = new THREE.Mesh(chimneyGeometry, chimneyMaterial);
+            chimney.position.set(3, 10.5, -2);
+            chimney.castShadow = true;
+            house.add(chimney);
+
+            house.position.set(-15, 0, -10);
+            return house;
+        }
+
+        // Garden
+        function createGarden() {
+            const garden = new THREE.Group();
+            
+            for (let i = 0; i < 8; i++) {
+                const flower = new THREE.Group();
+                
+                const stemGeometry = new THREE.CylinderGeometry(0.05, 0.05, 1, 8);
+                const stemMaterial = new THREE.MeshStandardMaterial({ color: 0x228b22 });
+                const stem = new THREE.Mesh(stemGeometry, stemMaterial);
+                stem.position.y = 0.5;
+                flower.add(stem);
+                
+                const petalGeometry = new THREE.SphereGeometry(0.3, 8, 8);
+                const colors = [0xff69b4, 0xff1493, 0xff6347, 0xffd700, 0xff4500];
+                const petalMaterial = new THREE.MeshStandardMaterial({ 
+                    color: colors[Math.floor(Math.random() * colors.length)],
+                    roughness: 0.4
+                });
+                const petals = new THREE.Mesh(petalGeometry, petalMaterial);
+                petals.position.y = 1.1;
+                flower.add(petals);
+                
+                const angle = (i / 8) * Math.PI * 2;
+                flower.position.set(Math.cos(angle) * 8, 0, Math.sin(angle) * 8);
+                flower.position.x -= 15;
+                flower.position.z -= 10;
+                garden.add(flower);
+            }
+            
+            return garden;
+        }
+
+        // Trees
+        function createTree(x, z) {
+            const tree = new THREE.Group();
+            
+            const trunkGeometry = new THREE.CylinderGeometry(0.3, 0.4, 4, 8);
+            const trunkMaterial = new THREE.MeshStandardMaterial({ color: 0x8b4513 });
+            const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
+            trunk.position.y = 2;
+            trunk.castShadow = true;
+            trunk.receiveShadow = true;
+            tree.add(trunk);
+            
+            for (let i = 0; i < 3; i++) {
+                const leafGeometry = new THREE.SphereGeometry(1.5, 8, 8);
+                const leafMaterial = new THREE.MeshStandardMaterial({ 
+                    color: new THREE.Color().setHSL(0.25 + Math.random() * 0.1, 0.8, 0.3 + Math.random() * 0.2)
+                });
+                const leaves = new THREE.Mesh(leafGeometry, leafMaterial);
+                leaves.position.y = 3.5 + i * 1.2;
+                leaves.position.x = (Math.random() - 0.5) * 1;
+                leaves.position.z = (Math.random() - 0.5) * 1;
+                leaves.castShadow = true;
+                leaves.receiveShadow = true;
+                tree.add(leaves);
+            }
+            
+            tree.position.set(x, 0, z);
+            return tree;
+        }
+
+        // Path
+        function createPath() {
+            const path = new THREE.Group();
+            
+            for (let i = 0; i < 15; i++) {
+                const stoneGeometry = new THREE.CylinderGeometry(0.5, 0.6, 0.1, 6);
+                const stoneMaterial = new THREE.MeshStandardMaterial({ 
+                    color: 0x808080,
+                    roughness: 0.7
+                });
+                const stone = new THREE.Mesh(stoneGeometry, stoneMaterial);
+                stone.position.set(-15 + i * 0.8, 0.05, -3 + Math.sin(i * 0.5) * 2);
+                stone.rotation.z = (Math.random() - 0.5) * 0.2;
+                stone.receiveShadow = true;
+                path.add(stone);
+            }
+            
+            return path;
+        }
+
+        // Fence
+        function createFence() {
+            const fence = new THREE.Group();
+            
+            for (let i = 0; i < 30; i++) {
+                const postGeometry = new THREE.CylinderGeometry(0.1, 0.1, 1.5, 8);
+                const postMaterial = new THREE.MeshStandardMaterial({ color: 0xdeb887 });
+                const post = new THREE.Mesh(postGeometry, postMaterial);
+                
+                const angle = (i / 30) * Math.PI * 2;
+                post.position.set(
+                    Math.cos(angle) * 12 - 15,
+                    0.75,
+                    Math.sin(angle) * 12 - 10
+                );
+                post.castShadow = true;
+                post.receiveShadow = true;
+                fence.add(post);
+            }
+            
+            return fence;
+        }
+
+        // Smiski class
+        class Smiski {
+            constructor(name, color, startPosition) {
+                this.name = name;
+                this.color = color;
+                this.position = startPosition.clone();
+                this.targetPosition = startPosition.clone();
+                this.speed = 2;
+                this.state = 'idle';
+                this.stateTimer = 0;
+                this.animationTime = 0;
+                
+                this.mesh = new THREE.Group();
+                
+                // Body
+                const bodyGeometry = new THREE.CylinderGeometry(0.3, 0.4, 1.2, 16);
+                const bodyMaterial = new THREE.MeshStandardMaterial({ 
+                    color: color,
+                    roughness: 0.5,
+                    metalness: 0.1
+                });
+                this.body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+                this.body.position.y = 0.6;
+                this.body.castShadow = true;
+                this.mesh.add(this.body);
+                
+                // Head
+                const headGeometry = new THREE.SphereGeometry(0.35, 16, 16);
+                const headMaterial = new THREE.MeshStandardMaterial({ 
+                    color: color,
+                    roughness: 0.4,
+                    metalness: 0.1
+                });
+                this.head = new THREE.Mesh(headGeometry, headMaterial);
+                this.head.position.y = 1.4;
+                this.head.castShadow = true;
+                this.mesh.add(this.head);
+                
+                // Eyes
+                const eyeGeometry = new THREE.SphereGeometry(0.08, 8, 8);
+                const eyeMaterial = new THREE.MeshStandardMaterial({ color: 0x000000 });
+                
+                this.leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+                this.leftEye.position.set(-0.12, 1.5, 0.3);
+                this.mesh.add(this.leftEye);
+                
+                this.rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+                this.rightEye.position.set(0.12, 1.5, 0.3);
+                this.mesh.add(this.rightEye);
+                
+                // Smile
+                const smileGeometry = new THREE.TorusGeometry(0.1, 0.02, 8, 8, Math.PI);
+                const smileMaterial = new THREE.MeshStandardMaterial({ color: 0x000000 });
+                this.smile = new THREE.Mesh(smileGeometry, smileMaterial);
+                this.smile.position.set(0, 1.35, 0.25);
+                this.smile.rotation.z = Math.PI;
+                this.mesh.add(this.smile);
+                
+                // Arms
+                const armGeometry = new THREE.CylinderGeometry(0.08, 0.08, 0.6, 8);
+                const armMaterial = new THREE.MeshStandardMaterial({ color: color });
+                
+                this.leftArm = new THREE.Mesh(armGeometry, armMaterial);
+                this.leftArm.position.set(-0.35, 1.0, 0);
+                this.leftArm.rotation.z = 0.3;
+                this.leftArm.castShadow = true;
+                this.mesh.add(this.leftArm);
+                
+                this.rightArm = new THREE.Mesh(armGeometry, armMaterial);
+                this.rightArm.position.set(0.35, 1.0, 0);
+                this.rightArm.rotation.z = -0.3;
+                this.rightArm.castShadow = true;
+                this.mesh.add(this.rightArm);
+                
+                // Label
+                const labelDiv = document.createElement('div');
+                labelDiv.textContent = name;
+                labelDiv.style.color = 'white';
+                labelDiv.style.fontSize = '12px';
+                labelDiv.style.fontWeight = 'bold';
+                labelDiv.style.textShadow = '1px 1px 2px black';
+                this.label = new CSS2DObject(labelDiv);
+                this.label.position.y = 2;
+                this.mesh.add(this.label);
+                
+                this.mesh.position.copy(startPosition);
+                
+                // AI personality
+                this.personality = {
+                    activityLevel: Math.random(),
+                    socialLevel: Math.random(),
+                    homePreference: Math.random()
+                };
+                
+                this.decideNewAction();
+            }
+            
+            decideNewAction() {
+                const now = new Date();
+                const hour = now.getHours() + now.getMinutes() / 60;
+                const actions = [];
+                
+                if (hour >= 6 && hour < 22) {
+                    actions.push('walking', 'exploring', 'sitting', 'idle');
+                    if (hour >= 8 && hour < 10) actions.push('gardening');
+                    if (hour >= 12 && hour < 14) actions.push('eating');
+                    if (hour >= 15 && hour < 18) actions.push('playing');
+                } else {
+                    actions.push('sleeping', 'idle');
+                }
+                
+                if (this.personality.activityLevel > 0.7) {
+                    actions.push('walking', 'walking', 'exploring');
+                }
+                
+                if (this.personality.homePreference > 0.7) {
+                    actions.push('sitting', 'idle');
+                }
+                
+                this.state = actions[Math.floor(Math.random() * actions.length)];
+                this.stateTimer = 3 + Math.random() * 10;
+                
+                if (this.state === 'walking' || this.state === 'exploring') {
+                    const angle = Math.random() * Math.PI * 2;
+                    const distance = 2 + Math.random() * 8;
+                    this.targetPosition.set(
+                        this.position.x + Math.cos(angle) * distance,
+                        0,
+                        this.position.z + Math.sin(angle) * distance
+                    );
+                    this.targetPosition.x = Math.max(-25, Math.min(5, this.targetPosition.x));
+                    this.targetPosition.z = Math.max(-20, Math.min(10, this.targetPosition.z));
+                } else if (this.state === 'gardening') {
+                    this.targetPosition.set(-15 + Math.random() * 10 - 5, 0, -10 + Math.random() * 10 - 5);
+                } else if (this.state === 'sleeping' || this.state === 'sitting') {
+                    this.targetPosition.set(-15 + Math.random() * 6 - 3, 0, -10 + Math.random() * 6 - 3);
+                }
+            }
+            
+            update(deltaTime) {
+                this.stateTimer -= deltaTime;
+                if (this.stateTimer <= 0) {
+                    this.decideNewAction();
+                }
+                
+                if ((this.state === 'walking' || this.state === 'exploring' || this.state === 'gardening' || this.state === 'playing') && 
+                    this.position.distanceTo(this.targetPosition) > 0.1) {
+                    
+                    const direction = this.targetPosition.clone().sub(this.position).normalize();
+                    const distance = Math.min(this.speed * deltaTime, this.position.distanceTo(this.targetPosition));
+                    this.position.add(direction.clone().multiplyScalar(distance));
+                    
+                    if (distance > 0.01) {
+                        const angle = Math.atan2(direction.x, direction.z);
+                        this.mesh.rotation.y = angle;
+                    }
+                    
+                    this.animationTime += deltaTime * 8;
+                    const bobAmount = Math.sin(this.animationTime) * 0.1;
+                    this.mesh.position.y = bobAmount;
+                    this.leftArm.rotation.x = Math.sin(this.animationTime) * 0.5;
+                    this.rightArm.rotation.x = -Math.sin(this.animationTime) * 0.5;
+                } else {
+                    this.animationTime += deltaTime * 2;
+                    const breatheAmount = Math.sin(this.animationTime) * 0.05;
+                    this.mesh.position.y = breatheAmount;
+                    this.leftArm.rotation.x = Math.sin(this.animationTime * 0.5) * 0.1;
+                    this.rightArm.rotation.x = Math.sin(this.animationTime * 0.5 + Math.PI) * 0.1;
+                }
+                
+                this.mesh.position.x = this.position.x;
+                this.mesh.position.z = this.position.z;
+            }
+        }
+
+        // Time display
+        function updateTimeDisplay() {
+            const now = new Date();
+            const hours = now.getHours().toString().padStart(2, '0');
+            const minutes = now.getMinutes().toString().padStart(2, '0');
+            document.getElementById('time-display').textContent = `${hours}:${minutes}`;
+            
+            const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+            const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+            document.getElementById('date-display').textContent = `${days[now.getDay()]}, ${months[now.getMonth()]} ${now.getDate()}`;
+            
+            const hour = now.getHours();
+            let weatherEmoji = '☀️ Sunny';
+            if (hour >= 6 && hour < 18) weatherEmoji = '☀️ Sunny';
+            else if (hour >= 18 && hour < 20) weatherEmoji = '🌅 Evening';
+            else weatherEmoji = '🌙 Night';
+            document.getElementById('weather-display').textContent = weatherEmoji;
+        }
+
+        // Build scene
+        const house = createHouse();
+        scene.add(house);
+
+        const garden = createGarden();
+        scene.add(garden);
+
+        const trees = [
+            createTree(-5, 12),
+            createTree(8, -15),
+            createTree(-25, 5),
+            createTree(10, 15),
+            createTree(-20, -18),
+            createTree(5, -5)
+        ];
+        trees.forEach(tree => scene.add(tree));
+
+        const path = createPath();
+        scene.add(path);
+
+        const fence = createFence();
+        scene.add(fence);
+
+        // Mailbox
+        const mailboxGroup = new THREE.Group();
+        const mailboxPost = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.1, 0.15, 2, 8),
+            new THREE.MeshStandardMaterial({ color: 0x8b4513 })
+        );
+        mailboxPost.position.y = 1;
+        mailboxGroup.add(mailboxPost);
+
+        const mailboxBox = new THREE.Mesh(
+            new THREE.BoxGeometry(0.6, 0.6, 1),
+            new THREE.MeshStandardMaterial({ color: 0x4169e1, metalness: 0.5, roughness: 0.4 })
+        );
+        mailboxBox.position.set(0, 2.3, 0.3);
+        mailboxGroup.add(mailboxBox);
+        mailboxGroup.position.set(-21, 0, -5);
+        scene.add(mailboxGroup);
+
+        // Pond
+        const pondGeometry = new THREE.CircleGeometry(3, 32);
+        const pondMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0x4682b4,
+            roughness: 0.1,
+            metalness: 0.8
+        });
+        const pond = new THREE.Mesh(pondGeometry, pondMaterial);
+        pond.rotation.x = -Math.PI / 2;
+        pond.position.set(10, 0.05, -12);
+        pond.receiveShadow = true;
+        scene.add(pond);
+
+        // Create Smiskis
+        const smiskis = [];
+        const smiskiConfigs = [
+            { name: 'Luna', color: 0xffb6c1, pos: new THREE.Vector3(-12, 0, -5) },
+            { name: 'Mochi', color: 0x98fb98, pos: new THREE.Vector3(-8, 0, -8) },
+            { name: 'Pippin', color: 0xffd700, pos: new THREE.Vector3(-10, 0, -3) },
+            { name: 'Gizmo', color: 0xdda0dd, pos: new THREE.Vector3(-14, 0, -7) }
+        ];
+
+        smiskiConfigs.forEach(config => {
+            const smiski = new Smiski(config.name, config.color, config.pos);
+            smiskis.push(smiski);
+            scene.add(smiski.mesh);
+        });
+
+        // Raycaster for clicking Smiskis
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+        const smiskiMeshes = smiskis.map(s => s.mesh);
+
+        window.addEventListener('click', (event) => {
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+            
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(smiskiMeshes, true);
+            
+            if (intersects.length > 0) {
+                let hitObject = intersects[0].object;
+                while (hitObject && !smiskiMeshes.includes(hitObject)) {
+                    hitObject = hitObject.parent;
+                }
+                
+                if (hitObject) {
+                    const smiski = smiskis.find(s => s.mesh === hitObject);
+                    if (smiski) {
+                        const infoDiv = document.getElementById('smiski-info');
+                        document.getElementById('smiski-name').textContent = smiski.name;
+                        document.getElementById('smiski-status').textContent = `Status: ${smiski.state}`;
+                        infoDiv.style.display = 'block';
+                        setTimeout(() => {
+                            infoDiv.style.display = 'none';
+                        }, 3000);
+                    }
+                }
+            }
+        });
+
+        // Animation loop
+        const clock = new THREE.Clock();
+        let lastTimeUpdate = 0;
+
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            const deltaTime = Math.min(clock.getDelta(), 0.1);
+            
+            const now = Date.now();
+            if (now - lastTimeUpdate > 1000) {
+                updateTimeDisplay();
+                lastTimeUpdate = now;
+            }
+            
+            // Update lighting based on time
+            const date = new Date();
+            const hour = date.getHours() + date.getMinutes() / 60;
+            
+            if (hour >= 6 && hour < 20) {
+                const intensity = 1 + Math.sin((hour - 6) / 14 * Math.PI) * 1.5;
+                sunLight.intensity = Math.max(0.2, intensity);
+                sunLight.position.y = Math.sin((hour - 6) / 14 * Math.PI) * 40;
+                
+                const progress = (hour - 6) / 14;
+                const skyTopColor = new THREE.Color().setHSL(0.6, 0.8, 0.3 + progress * 0.3);
+                const skyBottomColor = new THREE.Color().setHSL(0.6, 0.3, 0.6 + progress * 0.2);
+                skyMaterial.uniforms.topColor.value = skyTopColor;
+                skyMaterial.uniforms.bottomColor.value = skyBottomColor;
+                
+                scene.fog.color.setHSL(0.6, 0.3, 0.5 + progress * 0.3);
+                renderer.toneMappingExposure = 0.8 + progress * 0.7;
+            } else {
+                sunLight.intensity = 0.05;
+                skyMaterial.uniforms.topColor.value = new THREE.Color(0x0a0a2e);
+                skyMaterial.uniforms.bottomColor.value = new THREE.Color(0x1a1a3e);
+                scene.fog.color.set(0x0a0a2e);
+                renderer.toneMappingExposure = 0.3;
+            }
+            
+            smiskis.forEach(smiski => smiski.update(deltaTime));
+            
+            controls.update();
+            renderer.render(scene, camera);
+            labelRenderer.render(scene, camera);
+        }
+
+        // Window resize handler
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            labelRenderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Initialize
+        updateTimeDisplay();
+        animate();
+
+        console.log('🌟 Smiski World is ready!');
+        console.log('🏠 4 Smiskis are living their lives in real-time');
+        console.log('🕹️ Use mouse to orbit, zoom, and pan');
+        console.log('👆 Click on a Smiski to see their info');
+        console.log('🌅 Day/night cycle synced to your local time');
+    </script>
+</body>
+</html>

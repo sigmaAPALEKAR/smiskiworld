@@ -7,7 +7,7 @@ export class Smiski {
         this.color = color;
         this.position = startPosition.clone();
         this.targetPosition = startPosition.clone();
-        this.speed = 1.5 + Math.random() * 1;
+        this.speed = 0.8 + Math.random() * 0.5;
         this.state = 'idle';
         this.stateTimer = 0;
         this.animationTime = Math.random() * Math.PI * 2;
@@ -15,48 +15,51 @@ export class Smiski {
         this.mood = 'Happy';
         this.energy = 75 + Math.random() * 25;
         
+        // SCALE FACTOR - making Smiskis smaller (about 0.7 units tall)
+        const scale = 0.35;
+        
         this.mesh = new THREE.Group();
         
         // Body
-        const bodyGeometry = new THREE.CapsuleGeometry(0.3, 0.8, 8, 16);
+        const bodyGeometry = new THREE.CapsuleGeometry(0.3 * scale, 0.8 * scale, 8, 16);
         const bodyMaterial = new THREE.MeshStandardMaterial({ 
             color: color,
             roughness: 0.4,
             metalness: 0.05
         });
         this.body = new THREE.Mesh(bodyGeometry, bodyMaterial);
-        this.body.position.y = 0.8;
+        this.body.position.y = 0.8 * scale;
         this.body.castShadow = true;
         this.body.receiveShadow = true;
         this.mesh.add(this.body);
         
         // Head
-        const headGeometry = new THREE.SphereGeometry(0.4, 32, 32);
+        const headGeometry = new THREE.SphereGeometry(0.4 * scale, 32, 32);
         const headMaterial = new THREE.MeshStandardMaterial({ 
             color: color,
             roughness: 0.35,
             metalness: 0.05
         });
         this.head = new THREE.Mesh(headGeometry, headMaterial);
-        this.head.position.y = 1.7;
+        this.head.position.y = 1.7 * scale;
         this.head.castShadow = true;
         this.head.receiveShadow = true;
         this.mesh.add(this.head);
         
         // Eyes
-        const eyeGeometry = new THREE.SphereGeometry(0.09, 16, 16);
+        const eyeGeometry = new THREE.SphereGeometry(0.09 * scale, 16, 16);
         const eyeMaterial = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.1 });
         
         this.leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
-        this.leftEye.position.set(-0.14, 1.85, 0.35);
+        this.leftEye.position.set(-0.14 * scale, 1.85 * scale, 0.35 * scale);
         this.mesh.add(this.leftEye);
         
         this.rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
-        this.rightEye.position.set(0.14, 1.85, 0.35);
+        this.rightEye.position.set(0.14 * scale, 1.85 * scale, 0.35 * scale);
         this.mesh.add(this.rightEye);
         
         // Eye highlights
-        const highlightGeometry = new THREE.SphereGeometry(0.04, 8, 8);
+        const highlightGeometry = new THREE.SphereGeometry(0.04 * scale, 8, 8);
         const highlightMaterial = new THREE.MeshStandardMaterial({ 
             color: 0xffffff,
             roughness: 0.1,
@@ -65,46 +68,46 @@ export class Smiski {
         });
         
         const leftHighlight = new THREE.Mesh(highlightGeometry, highlightMaterial);
-        leftHighlight.position.set(-0.12, 1.88, 0.42);
+        leftHighlight.position.set(-0.12 * scale, 1.88 * scale, 0.42 * scale);
         this.mesh.add(leftHighlight);
         
         const rightHighlight = new THREE.Mesh(highlightGeometry, highlightMaterial);
-        rightHighlight.position.set(0.16, 1.88, 0.42);
+        rightHighlight.position.set(0.16 * scale, 1.88 * scale, 0.42 * scale);
         this.mesh.add(rightHighlight);
         
         // Smile
         const smileShape = new THREE.Shape();
-        smileShape.absarc(0, 0, 0.12, Math.PI * 0.2, Math.PI * 0.8, true);
+        smileShape.absarc(0, 0, 0.12 * scale, Math.PI * 0.2, Math.PI * 0.8, true);
         const smileGeometry = new THREE.ExtrudeGeometry(smileShape, {
-            depth: 0.02,
+            depth: 0.02 * scale,
             bevelEnabled: true,
-            bevelThickness: 0.01,
-            bevelSize: 0.01
+            bevelThickness: 0.01 * scale,
+            bevelSize: 0.01 * scale
         });
         const smileMaterial = new THREE.MeshStandardMaterial({ 
             color: 0x333333,
             roughness: 0.3
         });
         this.smile = new THREE.Mesh(smileGeometry, smileMaterial);
-        this.smile.position.set(0, 1.78, 0.3);
+        this.smile.position.set(0, 1.78 * scale, 0.3 * scale);
         this.smile.rotation.x = 0.1;
         this.mesh.add(this.smile);
         
         // Arms
-        const armGeometry = new THREE.CapsuleGeometry(0.07, 0.5, 4, 8);
+        const armGeometry = new THREE.CapsuleGeometry(0.07 * scale, 0.5 * scale, 4, 8);
         const armMaterial = new THREE.MeshStandardMaterial({ 
             color: color,
             roughness: 0.4
         });
         
         this.leftArm = new THREE.Mesh(armGeometry, armMaterial);
-        this.leftArm.position.set(-0.37, 1.2, 0);
+        this.leftArm.position.set(-0.37 * scale, 1.2 * scale, 0);
         this.leftArm.rotation.z = 0.3;
         this.leftArm.castShadow = true;
         this.mesh.add(this.leftArm);
         
         this.rightArm = new THREE.Mesh(armGeometry, armMaterial);
-        this.rightArm.position.set(0.37, 1.2, 0);
+        this.rightArm.position.set(0.37 * scale, 1.2 * scale, 0);
         this.rightArm.rotation.z = -0.3;
         this.rightArm.castShadow = true;
         this.mesh.add(this.rightArm);
@@ -113,14 +116,14 @@ export class Smiski {
         const labelDiv = document.createElement('div');
         labelDiv.textContent = name;
         labelDiv.style.color = 'white';
-        labelDiv.style.fontSize = '11px';
+        labelDiv.style.fontSize = '10px';
         labelDiv.style.fontWeight = 'bold';
         labelDiv.style.textShadow = '1px 1px 3px rgba(0,0,0,0.8)';
         labelDiv.style.background = 'rgba(0,0,0,0.5)';
-        labelDiv.style.padding = '2px 8px';
-        labelDiv.style.borderRadius = '10px';
+        labelDiv.style.padding = '2px 6px';
+        labelDiv.style.borderRadius = '8px';
         this.label = new CSS2DObject(labelDiv);
-        this.label.position.y = 2.3;
+        this.label.position.y = 2.3 * scale;
         this.mesh.add(this.label);
         
         this.mesh.position.copy(startPosition);
@@ -180,13 +183,10 @@ export class Smiski {
         this.stateTimer = 5 + Math.random() * 15;
         this.lastStateChange = performance.now() / 1000;
         
-        // Update mood based on state
-        const happyStates = ['playing', 'exploring', 'gardening'];
-        const tiredStates = ['sleeping'];
-        if (happyStates.includes(this.state)) {
+        if (['playing', 'exploring', 'gardening'].includes(this.state)) {
             this.mood = ['Happy', 'Excited', 'Cheerful'][Math.floor(Math.random() * 3)];
             this.energy = Math.max(10, this.energy - 5);
-        } else if (tiredStates.includes(this.state)) {
+        } else if (this.state === 'sleeping') {
             this.mood = 'Sleepy';
             this.energy = Math.min(100, this.energy + 15);
         } else {
@@ -252,16 +252,16 @@ export class Smiski {
             }
             
             this.animationTime += deltaTime * 10;
-            const bobAmount = Math.sin(this.animationTime) * 0.15;
+            const bobAmount = Math.sin(this.animationTime) * 0.06;
             this.mesh.position.y = bobAmount;
-            this.leftArm.rotation.x = Math.sin(this.animationTime) * 0.6;
-            this.rightArm.rotation.x = -Math.sin(this.animationTime) * 0.6;
+            this.leftArm.rotation.x = Math.sin(this.animationTime) * 0.5;
+            this.rightArm.rotation.x = -Math.sin(this.animationTime) * 0.5;
         } else {
             this.animationTime += deltaTime * 1.5;
-            const breatheAmount = Math.sin(this.animationTime) * 0.03;
+            const breatheAmount = Math.sin(this.animationTime) * 0.015;
             this.mesh.position.y = breatheAmount;
-            this.leftArm.rotation.x = Math.sin(this.animationTime * 0.5) * 0.1;
-            this.rightArm.rotation.x = Math.sin(this.animationTime * 0.5 + Math.PI) * 0.1;
+            this.leftArm.rotation.x = Math.sin(this.animationTime * 0.5) * 0.08;
+            this.rightArm.rotation.x = Math.sin(this.animationTime * 0.5 + Math.PI) * 0.08;
             
             if (Math.random() < 0.01) {
                 this.mesh.rotation.y += (Math.random() - 0.5) * 0.5;
